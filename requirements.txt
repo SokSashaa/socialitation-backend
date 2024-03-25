@@ -1,0 +1,31 @@
+celery==5.2.7
+Django < 4.2
+django-storages==1.13.1 # для работы с S3 хранилищами
+django-cors-headers==3.13.0
+django-filter==22.1
+django-dbbackup==4.0.2 #резервное копирование базы данных и перенос в новый проект
+djangorestframework==3.14.0
+django-autocomplete-light==3.9.4
+django-post-office==3.6.2 # для отправки почты
+django-celery-email==3.0.0 #
+django-celery-beat #
+djangorestframework-simplejwt==5.2.2 #
+django-mptt==0.14.0 #для работы с деревьями в моделях
+django_extensions < 4
+drf_yasg == 1.20.0 # для работы с документацией
+drf-flex-fields==1.0.0 # раскрытие полей моделей
+django-versatileimagefield==2.2 # для работы с изображениями
+django_celery_results # результаты работы с Celery в админке
+python-dateutil
+psycopg2-binary==2.9.4 # для работы с PostgreSQL
+flower==1.2.0 # для работы с Celery
+requests==2.28.1 # для работы с запросами
+requests_futures == 1.0.0 # для работы с запросами
+urllib3==1.26.12 # для работы с запросами
+html5lib==1.1
+pyppeteer==0.2.6
+python-dateutil==2.8.2
+mixer==7.2.1
+django-cacheops==6.1
+drf-spectacular==0.26.5
+

@@ -19,6 +19,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
+import socialize_main.urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -29,3 +30,5 @@ urlpatterns.append(path('refresh_token/', TokenRefreshView.as_view(), name='refr
 
 
 urlpatterns.append(path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema-customer'), name='swagger-ui'))
+
+urlpatterns += socialize_main.urls.urlpatterns

@@ -1,6 +1,8 @@
 from django.contrib.auth.base_user import AbstractBaseUser
-from django.contrib.auth.models import PermissionsMixin
+from django.contrib.auth.models import PermissionsMixin, AbstractUser
 from django.db import models
+
+from socialize_main.managers import CustomUserManager
 
 
 # Create your models here.
@@ -14,14 +16,17 @@ class Organization(models.Model):
     site = models.CharField(blank=True, null=True, max_length=150)
 
 
-class User(models.Model):
-    login = models.CharField(blank=False, null=False, unique=True, max_length=150)
+class User(AbstractUser):
     email = models.CharField(blank=False, null=False, unique=True, max_length=150)
     second_name = models.CharField(blank=True, null=True, max_length=150)
     name = models.CharField(blank=True, null=True, max_length=150)
     last_name = models.CharField(blank=True, null=True, max_length=150)
+    REQUIRED_FIELDS = []
+    USERNAME_FIELD = 'email'
+    objects = CustomUserManager()
 
-
+    def __str__(self):
+        return self.email
 
 
 class Researcher(models.Model):
