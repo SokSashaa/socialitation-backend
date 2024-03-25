@@ -1,0 +1,70 @@
+version: '3'
+
+services:
+  web:
+    build:
+      context: '.'
+    command: bash -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    volumes:
+      - .:/socialize/
+    ports:
+      - '8000:8000'
+    depends_on:
+      - db-postgres
+      - redis
+  celery:
+    build: .
+    command: celery -A SocializationProject worker -l info
+    stdin_open: true # docker run -i
+    tty: true
+    volumes:
+      - .:/socialize/
+    depends_on:
+      - db-postgres
+      - redis
+  celery-beat:
+    build: .
+    command: celery -A SocializationProject beat -l info
+    stdin_open: true # docker run -i
+    tty: true
+    volumes:
+      - .:/socialize/
+    depends_on:
+      - db-postgres
+      - redis
+
+  celery-flower:
+    build: .
+    command: celery -A SocializationProject flower
+    stdin_open: true # docker run -i
+    tty: true
+    volumes:
+      - .:/socialize/
+    depends_on:
+      - celery
+    ports:
+      - '5555:5555'
+
+
+  db-postgres:
+    image: postgres:13.8-alpine
+    volumes:
+      - ./run/db_postgres:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=socialize
+      - POSTGRES_DB=socialize
+    ports:
+      - '5432:5432'
+
+  redis:
+    image: "redis:alpine"
+    command: redis-server
+
+    volumes:
+    - ./run/redis-data:/var/lib/redis
+    - ./run/redis.conf:/usr/local/etc/redis/redis.conf
+    environment:
+     - REDIS_REPLICATION_MODE=master
