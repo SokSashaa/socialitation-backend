@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-hfqa74(+qq7%5!tn7eng6u$$z^1igc3n(tn*5xvx%=_oo7=(im
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'socialize-project-ksu.ru']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'socialize-project-ksu.ru', '0.0.0.0']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
@@ -75,21 +75,14 @@ TEMPLATES = [
     },
 ]
 
+USE_THOUSAND_SEPARATOR = True
+AUTH_USER_MODEL = 'socialize_main.User'
+
 WSGI_APPLICATION = 'SocializationProject.wsgi.application'
 
-REDIS_HOST = os.environ.get('REDIS_HOST', 'redis')
-REDIS_PORT = os.environ.get('REDIS_PORT', '6379')
-REDIS_PASS = os.environ.get('REDIS_PASS')
-
-
-DB_HOST = os.environ.get('DB_HOST', 'db-postgres')
-DB_NAME = os.environ.get('DB_NAME', 'socialization')
-DB_USER = os.environ.get('DB_USER', 'postgres')
-DB_PASS = os.environ.get('DB_PASS', 'socialization')
-DB_PORT = os.environ.get('DB_PORT', '5432')
 
 # Database
-# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
     'default': {
@@ -98,25 +91,10 @@ DATABASES = {
     }
 }
 
-REDIS_PASS = 'socialize'
-BROKER_URL = 'redis://' + REDIS_HOST + ':' + REDIS_PORT + '/0'
-BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 3600}
-
-
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_RESULT_EXTENDED = True
-CELERY_CACHE_BACKEND = 'default'
-CELERY_TASK_TRACK_STARTED=True
-CELERY_TIMEZONE = "Europe/Moscow"
-CELERY_TASK_ACKS_LATE = True
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1
-CELERY_WORKER_MAX_TASKS_PER_CHILD = 1
 
 # Password validation
-# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
+# https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
 
-USE_THOUSAND_SEPARATOR = True
-AUTH_USER_MODEL = 'socialize_main.User'
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -134,70 +112,36 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/5.0/topics/i18n/
+# https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = 'ru'
-TIME_ZONE = 'Europe/Moscow'
+LANGUAGE_CODE = 'en-us'
+
+TIME_ZONE = 'UTC'
+
 USE_I18N = True
-USE_L10N = True
-USE_TZ = True
-LOGIN_REDIRECT_URL = '/'
 
-EMAIL_BACKEND = 'djcelery_email.backends.CeleryEmailBackend'
+USE_TZ = True
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    'http://localhost:8000',
+    'http://0.0.0.0:8000'
+]
+
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 100
+}
+
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
+# https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
+# https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.BasicAuthentication',
-        # 'rest_framework.authentication.SessionAuthentication',
-        'rest_framework_simplejwt.authentication.JWTAuthentication'
-    ],
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_PERMISSIONS_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
-    ),
-    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'PAGE_SIZE': 100
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-}
 
-CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
-CSRF_TRUSTED_ORIGINS = [
-    "https://*.shop-delivery.ru",
-    "http://*.shop-delivery.ru",
-    "http://10.44.10.78"
-]
-# Настройки авторизации
-SIMPLE_JWT = {
-    "AUTH_HEADER_TYPES": ['JWT'],
-    'ACCESS_TOKEN_LIFETIME': datetime.timedelta(seconds=300),
-    'REFRESH_TOKEN_LIFETIME': datetime.timedelta(days=7),
-    # 'JWT_ALLOW_REFRESH': True,
-    # 'JWT_VERIFY': True,
-    # 'JWT_VERIFY_EXPIRATION': True,
-}
-
-SWAGGER_SETTINGS = {
-    'SHOW_REQUEST_HEADERS': True,
-    'SUPPORTED_SUBMIT_METHODS': [
-        'get',
-        'post',
-        'put',
-    ]
-}
