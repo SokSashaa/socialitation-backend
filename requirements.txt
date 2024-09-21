@@ -28,4 +28,6 @@ python-dateutil==2.8.2
 mixer==7.2.1
 django-cacheops==6.1
 drf-spectacular==0.26.5
+django-rest-swagger==2.2.0
+drf-yasg==
 
