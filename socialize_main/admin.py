@@ -11,7 +11,7 @@ class CustomUserAdmin(UserAdmin):
     fieldsets = (
         (None, {'fields': ('login', 'password')}),
         ('Permissions', {'fields': ('is_staff', 'is_active','groups')}),
-        ('Профиль', {'fields': ('name', 'second_name', 'patronymic', 'photo')}),
+        ('Профиль', {'fields': ('name', 'second_name', 'patronymic', 'photo', 'phone_number')}),
     )
     add_fieldsets = (
         (None, {

@@ -21,9 +21,10 @@ class User(AbstractUser):
     email = models.CharField(blank=True, null=True, unique=False, max_length=150)
     username = None
     second_name = models.CharField(blank=True, null=True, max_length=150)
-    name = models.CharField(blank=True, null=True, max_length=150)
+    name = models.CharField(blank=True, null=False, max_length=150,default='Иван')
     login = models.CharField(blank=False, null=False, unique=True, max_length=100)
     photo = models.CharField(blank=True, null=True, max_length=500)
+    phone_number = models.CharField(blank=False, null=False, max_length=12,default='+77777777777')
     patronymic = models.CharField(blank=True, null=True, max_length=150)
     REQUIRED_FIELDS = []
     USERNAME_FIELD = 'login'
@@ -43,7 +44,6 @@ class Observed(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='observed_organization')
     date_of_birth = models.DateField(blank=False, null=False)
     address = models.CharField(blank=False, null=False, max_length=150)
-    phone_number = models.CharField(blank=False, null=False, max_length=150)
 
 class Administrator(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='administrator_user')
@@ -86,7 +86,7 @@ class ObservedAnswer(models.Model):
 
 class Games(models.Model):
     name = models.CharField(blank=False, null=False, max_length=150)
-    description = models.CharField(blank=False, null=False, max_length=150)
+    description = models.CharField(blank=False, null=False, max_length=300)
     link = models.CharField(blank=False, null=False, max_length=150)
 
 class GamesObserved(models.Model):

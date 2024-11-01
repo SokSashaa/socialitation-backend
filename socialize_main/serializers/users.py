@@ -30,7 +30,7 @@ class UsersSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'login', 'email', 'second_name', 'name', 'last_name', 'role', 'photo', 'birthday')
+        fields = ('id', 'login', 'email', 'second_name', 'name', 'last_name', 'role', 'photo', 'birthday', 'phone_number')
         read_only_fields = ['id']
 
 class ObservedSerializer(serializers.ModelSerializer):
@@ -77,7 +77,7 @@ class UserRegSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('login', 'email', 'name', 'second_name', 'patronymic', 'password', 'birthday', 'role', 'photo')
+        fields = ('login', 'email', 'name', 'second_name', 'patronymic', 'password', 'birthday', 'role', 'photo', 'phone_number')
 
     @transaction.atomic
     def create(self, validated_data):
@@ -102,7 +102,7 @@ class UserRegSerializer(serializers.ModelSerializer):
                 elif validated_data['role'].get('code', '') == 'observed':
                     observed = Observed.objects.get_or_create(user=user, tutor=Tutor.objects.get(pk=validated_data['role']['tutor_id']),
                                                               organization=Organization.objects.get(pk=validated_data['role']['organization_id']),
-                                                              date_of_birth=validated_data['birthday'], address='г. Москва', phone_number='7953483551')
+                                                              date_of_birth=validated_data['birthday'], address='г. Москва') ## в скобках, phone_number='7953483551'
             return user, created
 
 class TutorsSerializer(serializers.Serializer):
