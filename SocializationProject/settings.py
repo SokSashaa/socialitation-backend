@@ -16,7 +16,6 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
@@ -26,10 +25,9 @@ SECRET_KEY = 'django-insecure-hfqa74(+qq7%5!tn7eng6u$$z^1igc3n(tn*5xvx%=_oo7=(im
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'socialize-project-ksu.ru', '0.0.0.0']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0', '37.18.74.193', 'unvr-ubnt20.uvelirsoft.ru', 'www.unvr-ubnt20.uvelirsoft.ru']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
-
 
 # Application definition
 
@@ -84,7 +82,6 @@ AUTH_USER_MODEL = 'socialize_main.User'
 
 WSGI_APPLICATION = 'SocializationProject.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
@@ -94,7 +91,6 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -113,7 +109,6 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -135,19 +130,20 @@ CORS_ALLOWED_ORIGINS = [
     'http://0.0.0.0:8000',
     'http://0.0.0.0:5173',
     'http://localhost:5173',
+    '37.18.74.193',
+    'unvr-ubnt20.uvelirsoft.ru'
+    'www.unvr-ubnt20.uvelirsoft.ru'
 ]
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS':
-    'rest_framework.pagination.PageNumberPagination',
+        'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 100,
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',# <-- Here
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',  # <-- Here
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ]
 }
-
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
@@ -159,12 +155,9 @@ STATICFILES_DIRS = [
 ]
 os.makedirs(os.path.join(STATIC_ROOT, 'uploaded_images'), exist_ok=True)
 
-
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
