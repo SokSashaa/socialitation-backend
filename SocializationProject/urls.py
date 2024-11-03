@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.templatetags.static import static
-from django.urls import path
+from django.urls import path,include
 from drf_yasg import openapi
 from drf_yasg.views import get_schema_view
 from rest_framework import permissions
@@ -36,13 +36,15 @@ schema_view = get_schema_view(
     permission_classes=(permissions.AllowAny,),
 )
 
-urlpatterns = [path('admin/', admin.site.urls), path('doc/', schema_view.with_ui('swagger', cache_timeout=0)),
-               path('obtain_token/', TokenObtainPairView.as_view(), name='authuser'),
-               path('refresh_token/', TokenRefreshView.as_view(), name='refreshtoken'),
-               path('api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema-customer'),
-                    name='swagger-ui')]
+urlpatterns = [path('api/admin/', admin.site.urls), path('doc/', schema_view.with_ui('swagger', cache_timeout=0)),
+               path('api/obtain_token/', TokenObtainPairView.as_view(), name='authuser'),
+               path('api/refresh_token/', TokenRefreshView.as_view(), name='refreshtoken'),
+               path('api/api/schema/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema-customer'),
+                    name='swagger-ui'),
+               ]
 
 urlpatterns += socialize_main.urls.urlpatterns
+print(urlpatterns)
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
