@@ -130,9 +130,9 @@ CORS_ALLOWED_ORIGINS = [
     'http://0.0.0.0:8000',
     'http://0.0.0.0:5173',
     'http://localhost:5173',
-    '37.18.74.193',
-    'unvr-ubnt20.uvelirsoft.ru'
-    'www.unvr-ubnt20.uvelirsoft.ru'
+    'http://37.18.74.193',
+    'http://unvr-ubnt20.uvelirsoft.ru',
+    'http://www.unvr-ubnt20.uvelirsoft.ru'
 ]
 
 REST_FRAMEWORK = {
