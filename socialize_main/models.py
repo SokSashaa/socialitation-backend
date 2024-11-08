@@ -20,7 +20,7 @@ class Organization(models.Model):
 class User(AbstractUser):
     email = models.CharField(blank=True, null=True, unique=False, max_length=150)
     username = None
-    second_name = models.CharField(blank=True, null=True, max_length=150)
+    second_name = models.CharField(blank=True, null=False, max_length=150, default='Иванов')
     name = models.CharField(blank=True, null=False, max_length=150,default='Иван')
     login = models.CharField(blank=False, null=False, unique=True, max_length=100)
     photo = models.CharField(blank=True, null=True, max_length=500)
