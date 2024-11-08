@@ -25,7 +25,8 @@ SECRET_KEY = 'django-insecure-hfqa74(+qq7%5!tn7eng6u$$z^1igc3n(tn*5xvx%=_oo7=(im
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0', '37.18.74.193', 'unvr-ubnt20.uvelirsoft.ru', 'www.unvr-ubnt20.uvelirsoft.ru']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '0.0.0.0', '37.18.74.193', 'unvr-ubnt20.uvelirsoft.ru',
+                 'www.unvr-ubnt20.uvelirsoft.ru']
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
@@ -132,7 +133,9 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://37.18.74.193',
     'http://unvr-ubnt20.uvelirsoft.ru',
-    'http://www.unvr-ubnt20.uvelirsoft.ru'
+    'http://www.unvr-ubnt20.uvelirsoft.ru',
+    'https://unvr-ubnt20.uvelirsoft.ru',
+    'https://www.unvr-ubnt20.uvelirsoft.ru'
 ]
 
 REST_FRAMEWORK = {
