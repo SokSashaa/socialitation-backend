@@ -30,7 +30,7 @@ class UsersSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'login', 'email', 'second_name', 'name', 'last_name', 'role', 'photo', 'birthday', 'phone_number')
+        fields = ('id', 'login', 'email', 'second_name', 'name', 'patronymic', 'role', 'photo', 'birthday', 'phone_number')
         read_only_fields = ['id']
 
 class ObservedSerializer(serializers.ModelSerializer):
@@ -51,7 +51,7 @@ class ObservedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'second_name', 'name', 'last_name', 'role', 'games', 'tests')
+        fields = ('id', 'email', 'second_name', 'name', 'patronymic', 'role', 'games', 'tests')
         read_only_fields = ['id']
 
 class ChangeUserInfoSerializer(serializers.Serializer):
