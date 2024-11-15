@@ -10,9 +10,25 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as dj_filters
 
 from SocializationProject import settings
-from socialize_main.models import User, Observed, Tutor
+from socialize_main.models import User, Observed, Tutor, Administrator, Organization
 from socialize_main.serializers.users import UserRegSerializer, UsersSerializer, ObservedSerializer, \
     ChangeUserInfoSerializer, ChangePasswordSerializer, TutorsSerializer, AppointObservedSerializer
+
+
+def search_role(user):
+    old_role_obj = ''
+    old_role_name = ''
+    try:
+        old_role_obj = Tutor.objects.get(user=user)
+        old_role_name = 'tutor'
+    except Tutor.DoesNotExist:
+        try:
+            old_role_obj = Observed.objects.get(user=user)
+            old_role_name = 'observed'
+        except Observed.DoesNotExist:
+            old_role_obj = Administrator.objects.get(user=user)
+            old_role_name = 'administrator'
+    return old_role_obj, old_role_name
 
 
 def filter_by_role(queryset, name, value):
@@ -26,6 +42,7 @@ def filter_by_role(queryset, name, value):
         queryset = queryset.objects.none()
     return queryset
 
+
 class UserFilter(dj_filters.FilterSet):
     role = dj_filters.CharFilter(method=filter_by_role, label='Роль')
 
@@ -34,7 +51,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     serializer_class = UsersSerializer
     filterset_fields = []
-    ordering = ['-pk', 'name'] # TODO ЗАЛИТЬ
+    ordering = ['-pk', 'name']  # TODO ЗАЛИТЬ
     search_fields = ['name']
 
     def get_queryset(self):
@@ -45,24 +62,26 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     def me(self, request):
         return JsonResponse({"success": True, "result": UsersSerializer(request.user).data}, status=status.HTTP_200_OK)
 
-
-    @action(detail=False, methods=['GET']) # TODO ЗАЛИТЬ
+    @action(detail=False, methods=['GET'])  # TODO ЗАЛИТЬ
     def get_observeds(self, request):
         data = request.query_params
         if data.get('text', False):
             try:
                 first_pos = data['text'].split(' ')[0]
-                users = User.objects.filter(second_name__icontains=first_pos) | User.objects.filter(name__icontains=first_pos)
+                users = User.objects.filter(second_name__icontains=first_pos) | User.objects.filter(
+                    name__icontains=first_pos)
             except IndexError:
                 users = User.objects.none()
             try:
                 second_pos = data['text'].split(' ')[1]
-                users = users | User.objects.filter(second_name__icontains=second_pos) | User.objects.filter(name__icontains=second_pos)
+                users = users | User.objects.filter(second_name__icontains=second_pos) | User.objects.filter(
+                    name__icontains=second_pos)
             except IndexError:
                 pass
         else:
             users = User.objects.filter(observed_user__isnull=False)
-        return JsonResponse({'success': True, 'results': ObservedSerializer(users, many=True).data}, status=status.HTTP_200_OK)
+        return JsonResponse({'success': True, 'results': ObservedSerializer(users, many=True).data},
+                            status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['GET'])
     def get_observeds_by_tutor(self, request, pk):
@@ -70,7 +89,8 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             tutor = User.objects.get(pk=pk)
             observeds = list(Observed.objects.filter(tutor=tutor.tutor_user.first()).values_list('user__pk', flat=True))
             users = User.objects.filter(pk__in=observeds)
-            return JsonResponse({'success': True, 'results': ObservedSerializer(users, many=True).data}, status=status.HTTP_200_OK)
+            return JsonResponse({'success': True, 'results': ObservedSerializer(users, many=True).data},
+                                status=status.HTTP_200_OK)
         except Tutor.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Тьютор не найден']}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -85,13 +105,14 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             user.second_name = serializer.validated_data['second_name']
             user.patronymic = serializer.validated_data['patronymic']
             user.email = serializer.validated_data['email']
+            old_role_obj,old_role_name = search_role(user)
             if user.observed_user.count() > 0:
                 obs = user.observed_user.first()
                 obs.date_of_birth = serializer.validated_data['birthday']
                 obs.save()
             if serializer.validated_data.get('photo', False):
                 image_data = serializer.validated_data['photo']
-                image_name = f"{random.randint(1,10000)}_photo.png"  # уникальное имя для каждого пользователя
+                image_name = f"{random.randint(1, 10000)}_photo.png"  # уникальное имя для каждого пользователя
                 image_path = os.path.join(settings.MEDIA_ROOT, 'uploaded_images', image_name)
 
                 # Ensure the directory exists
@@ -113,10 +134,25 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 # Формируем URL для сохраненного изображения
                 image_url = os.path.join(settings.MEDIA_URL, 'uploaded_images', image_name)
                 user.photo = image_url
+            if serializer.validated_data['role'] and serializer.validated_data['role'] != old_role_name:
+                print('заход')
+                old_role_obj.delete()
+                if serializer.validated_data['role'] == 'tutor':
+                    Tutor.objects.get_or_create(user=user, organization=Organization.objects.first())
+                elif serializer.validated_data['role'] == 'administrator':
+                    Administrator.objects.create(user=user)
+                elif serializer.validated_data['role'] == 'observed':
+                    Observed.objects.get_or_create(user=user, tutor=Tutor.objects.get(
+                        pk=serializer.validated_data['role']['tutor_id']),
+                                                   organization=Organization.objects.first(), ##TODO здесь не первую запись, а то что укажут на фронте. Если что есть в сереализаторе
+                                                   date_of_birth=serializer.validated_data['birthday'],
+                                                   address='г. Москва')
+
             user.save()
             return JsonResponse({'success': True, 'result': UsersSerializer(user).data}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
-            return JsonResponse({'success': False, 'errors': ['Такого пользователя не найдено']}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'success': False, 'errors': ['Такого пользователя не найдено']},
+                                status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'])
     def change_password(self, request):
@@ -167,9 +203,10 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 user.save()
                 return JsonResponse({'success': True, 'result': UsersSerializer(user).data}, status=status.HTTP_200_OK)
             else:
-                return JsonResponse({'success': False, 'errors': ['Пользователь с таким логином или почтой уже существует']}, status=status.HTTP_400_BAD_REQUEST)
+                return JsonResponse(
+                    {'success': False, 'errors': ['Пользователь с таким логином или почтой уже существует']},
+                    status=status.HTTP_400_BAD_REQUEST)
         return JsonResponse({'success': False, 'errors': serializer.errors})
-
 
     @action(methods=['GET'], detail=False)
     def get_tutors(self, request):
@@ -192,8 +229,10 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             if not response:
                 return JsonResponse({'success': True}, status=status.HTTP_200_OK)
             else:
-                return JsonResponse({'success': True, 'message': f'Пользователям: {response} тьютор уже назначен'}, status=status.HTTP_400_BAD_REQUEST)
+                return JsonResponse({'success': True, 'message': f'Пользователям: {response} тьютор уже назначен'},
+                                    status=status.HTTP_400_BAD_REQUEST)
         except Tutor.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Тьютор не найден']}, status=status.HTTP_400_BAD_REQUEST)
         except Tutor.MultipleObjectsReturned:
-            return JsonResponse({'success': False, 'errors': ['Найдено несколько тьюторов']}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'success': False, 'errors': ['Найдено несколько тьюторов']},
+                                status=status.HTTP_400_BAD_REQUEST)
