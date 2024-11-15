@@ -99,10 +99,10 @@ class UserRegSerializer(serializers.ModelSerializer):
                 user.set_password(validated_data['password'])
                 user.save()
                 if validated_data['role'].get('code', '') == 'tutor':
-                    tutor = Tutor.objects.get_or_create(user=user, organization=Organization.objects.get(pk=validated_data['role']['organization_id']))
+                    tutor = Tutor.objects.get_or_create(user=user, organization=Organization.objects.first()) ## Organization.objects.get(pk=validated_data['role']['organization_id'] ##TODO Исправить на это, когда появится функционал организация
                 elif validated_data['role'].get('code', '') == 'observed':
                     observed = Observed.objects.get_or_create(user=user, tutor=Tutor.objects.get(pk=validated_data['role']['tutor_id']),
-                                                              organization=Organization.objects.get(pk=validated_data['role']['organization_id']),
+                                                              organization=Organization.objects.first(), ## Organization.objects.get(pk=validated_data['role']['organization_id']
                                                               date_of_birth=validated_data['birthday'], address='г. Москва') ## в скобках, phone_number='7953483551'
             return user, created
 

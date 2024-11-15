@@ -58,6 +58,15 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
         queryset = User.objects.all()
         return queryset
 
+    @action(detail=True, methods=['DELETE'])
+    def delete_user(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+            user.delete()
+            return JsonResponse({'success': True, 'result': 'Пользователь удален'}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Пользователь не найден'}, status=status.HTTP_404_NOT_FOUND)
+
     @action(detail=False, methods=['GET'])
     def me(self, request):
         return JsonResponse({"success": True, "result": UsersSerializer(request.user).data}, status=status.HTTP_200_OK)
