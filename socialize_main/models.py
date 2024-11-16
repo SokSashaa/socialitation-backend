@@ -12,7 +12,7 @@ from socialize_main.managers import CustomUserManager
 class Organization(models.Model):
     name = models.CharField(blank=False, null=False, max_length=150)
     address = models.CharField(blank=False, null=False, max_length=150)
-    phone_numer = models.CharField(blank=False, null=False, max_length=150)
+    phone_number = models.CharField(blank=False, null=False, max_length=150)
     email = models.CharField(blank=False, null=False, max_length=150)
     site = models.CharField(blank=True, null=True, max_length=150)
 

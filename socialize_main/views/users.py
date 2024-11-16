@@ -149,7 +149,6 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 image_url = os.path.join(settings.MEDIA_URL, 'uploaded_images', image_name)
                 user.photo = image_url
             if serializer.validated_data['role'] and serializer.validated_data['role'] != old_role_name:
-                print('заход')
                 old_role_obj.delete()
                 if serializer.validated_data['role'] == 'tutor':
                     Tutor.objects.get_or_create(user=user, organization=Organization.objects.first())
