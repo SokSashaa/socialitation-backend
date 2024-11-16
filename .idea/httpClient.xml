@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="HttpClientEndpointsTabState">
+    <option name="requestToText" value="&lt;CachedHttpClientTabRequests&gt;&#10;  &lt;entry key=&quot;9eafa4ee7d855fc22585f6388d9e701a33da4b53&quot; value=&quot;###&amp;#10;DELETE http://localhost:8000/api/users/{{pk}}/delete_user/&quot; /&gt;&#10;&lt;/CachedHttpClientTabRequests&gt;" />
+  </component>
+</project>

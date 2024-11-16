@@ -62,6 +62,11 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     def delete_user(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
+            image_name =  user.photo[user.photo.rfind('\\')+1:]
+            image = os.path.join(settings.MEDIA_ROOT, 'uploaded_images', image_name)
+            if os.path.isfile(image):
+                os.remove(image)
+
             user.delete()
             return JsonResponse({'success': True, 'result': 'Пользователь удален'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
