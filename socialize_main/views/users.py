@@ -18,6 +18,7 @@ from socialize_main.serializers.users import UserRegSerializer, UsersSerializer,
 def search_role(user):
     old_role_obj = ''
     old_role_name = ''
+    print(user)
     try:
         old_role_obj = Tutor.objects.get(user=user)
         old_role_name = 'tutor'
@@ -26,8 +27,12 @@ def search_role(user):
             old_role_obj = Observed.objects.get(user=user)
             old_role_name = 'observed'
         except Observed.DoesNotExist:
-            old_role_obj = Administrator.objects.get(user=user)
-            old_role_name = 'administrator'
+            try:
+                old_role_obj = Administrator.objects.get(user=user)
+                old_role_name = 'administrator'
+            except Administrator.DoesNotExist:
+                old_role_name='no role'
+                old_role_obj = {}
     return old_role_obj, old_role_name
 
 
@@ -62,7 +67,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     def delete_user(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
-            image_name =  user.photo[user.photo.rfind('\\')+1:]
+            image_name = user.photo[user.photo.rfind('\\') + 1:]
             image = os.path.join(settings.MEDIA_ROOT, 'uploaded_images', image_name)
             if os.path.isfile(image):
                 os.remove(image)
@@ -119,7 +124,8 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             user.second_name = serializer.validated_data['second_name']
             user.patronymic = serializer.validated_data['patronymic']
             user.email = serializer.validated_data['email']
-            old_role_obj,old_role_name = search_role(user)
+            print(user)
+            old_role_obj, old_role_name = search_role(user)
             if user.observed_user.count() > 0:
                 obs = user.observed_user.first()
                 obs.date_of_birth = serializer.validated_data['birthday']
@@ -149,7 +155,6 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 image_url = os.path.join(settings.MEDIA_URL, 'uploaded_images', image_name)
                 user.photo = image_url
             if serializer.validated_data['role'] and serializer.validated_data['role'] != old_role_name:
-                old_role_obj.delete()
                 if serializer.validated_data['role'] == 'tutor':
                     Tutor.objects.get_or_create(user=user, organization=Organization.objects.first())
                 elif serializer.validated_data['role'] == 'administrator':
@@ -157,10 +162,13 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 elif serializer.validated_data['role'] == 'observed':
                     Observed.objects.get_or_create(user=user, tutor=Tutor.objects.get(
                         pk=serializer.validated_data['role']['tutor_id']),
-                                                   organization=Organization.objects.first(), ##TODO здесь не первую запись, а то что укажут на фронте. Если что есть в сереализаторе
+                                                   organization=Organization.objects.first(),
+                                                   ##TODO здесь не первую запись, а то что укажут на фронте. Если что есть в сереализаторе
                                                    date_of_birth=serializer.validated_data['birthday'],
                                                    address='г. Москва')
 
+            if not old_role_name == 'no role':
+                old_role_obj.delete()
             user.save()
             return JsonResponse({'success': True, 'result': UsersSerializer(user).data}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
