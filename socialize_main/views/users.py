@@ -31,7 +31,7 @@ def search_role(user):
                 old_role_obj = Administrator.objects.get(user=user)
                 old_role_name = 'administrator'
             except Administrator.DoesNotExist:
-                old_role_name='no role'
+                old_role_name = 'no role'
                 old_role_obj = {}
     return old_role_obj, old_role_name
 
@@ -67,16 +67,13 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     def delete_user(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
-            image_name = user.photo[user.photo.rfind('\\') + 1:]
-            image = os.path.join(settings.MEDIA_ROOT, 'uploaded_images', image_name)
-            if os.path.isfile(image):
-                os.remove(image)
+            # image_name = user.photo[user.photo.rfind('\\') + 1:]
+            # image = os.path.join(settings.MEDIA_ROOT, 'uploaded_images', image_name)
+            if os.path.isfile(user.photo):
+                os.remove(user.photo)
 
             user.delete()
-            if os.path.isfile(image):
-                return JsonResponse({'success': True, 'result': 'Пользователь удален'}, status=status.HTTP_200_OK)
-            else:
-                return JsonResponse({'success': True, 'result': 'Пользователь удален, но не найден файл ' + str(image)}, status=status.HTTP_200_OK)
+            return JsonResponse({'success': True, 'result': 'Пользователь удален'}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Пользователь не найден'}, status=status.HTTP_404_NOT_FOUND)
 
