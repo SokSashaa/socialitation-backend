@@ -73,7 +73,10 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 os.remove(image)
 
             user.delete()
-            return JsonResponse({'success': True, 'result': 'Пользователь удален'}, status=status.HTTP_200_OK)
+            if os.path.isfile(image):
+                return JsonResponse({'success': True, 'result': 'Пользователь удален'}, status=status.HTTP_200_OK)
+            else:
+                return JsonResponse({'success': True, 'result': 'Пользователь удален, но не найден файл ' + str(image)}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Пользователь не найден'}, status=status.HTTP_404_NOT_FOUND)
 
