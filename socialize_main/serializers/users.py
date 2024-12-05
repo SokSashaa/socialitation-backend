@@ -30,7 +30,7 @@ class UsersSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'login', 'email', 'second_name', 'name', 'patronymic', 'role', 'photo', 'birthday', 'phone_number')
+        fields = ('id', 'login', 'email', 'second_name', 'name', 'patronymic', 'role', 'photo', 'birthday', 'phone_number','organization')
         read_only_fields = ['id']
 
 class ObservedSerializer(serializers.ModelSerializer):
@@ -61,11 +61,14 @@ class ChangeUserInfoSerializer(serializers.Serializer):
     email = serializers.CharField(help_text='Почта юзера')
     birthday = serializers.DateField()
     photo = serializers.CharField(help_text='Ссылка на фото', required=False, allow_null=True, allow_blank=True)
-    role = serializers.JSONField(default={})
+    role = serializers.JSONField(help_text='Роль', required=False)
 
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+class ChangePasswordAdminSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
 
 class UserRegSerializer(serializers.ModelSerializer):
@@ -78,7 +81,7 @@ class UserRegSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('login', 'email', 'name', 'second_name', 'patronymic', 'password', 'birthday', 'role', 'photo', 'phone_number')
+        fields = ('login', 'email', 'name', 'second_name', 'patronymic', 'password', 'birthday', 'role', 'photo', 'phone_number', 'organization')
 
     @transaction.atomic
     def create(self, validated_data):
@@ -92,17 +95,18 @@ class UserRegSerializer(serializers.ModelSerializer):
                 defaults={
                     'name': validated_data.get('name', ''),
                     'second_name': validated_data.get('second_name', ''),
-                    'patronymic': validated_data.get('patronymic', '')
+                    'patronymic': validated_data.get('patronymic', ''),
+                    'organization': validated_data.get('organization', 1),
                 }
             )
             if created:
                 user.set_password(validated_data['password'])
                 user.save()
                 if validated_data['role'].get('code', '') == 'tutor':
-                    tutor = Tutor.objects.get_or_create(user=user, organization=Organization.objects.first()) ## Organization.objects.get(pk=validated_data['role']['organization_id'] ##TODO Исправить на это, когда появится функционал организация
+                    tutor = Tutor.objects.get_or_create(user=user), ##organization=Organization.objects.first()) ## Organization.objects.get(pk=validated_data['role']['organization_id'] ##TODO Исправить на это, когда появится функционал организация
                 elif validated_data['role'].get('code', '') == 'observed':
                     observed = Observed.objects.get_or_create(user=user, tutor=Tutor.objects.get(pk=validated_data['role']['tutor_id']),
-                                                              organization=Organization.objects.first(), ## Organization.objects.get(pk=validated_data['role']['organization_id']
+                                                            ##  organization=Organization.objects.first(), ## Organization.objects.get(pk=validated_data['role']['organization_id']
                                                               date_of_birth=validated_data['birthday'], address='г. Москва') ## в скобках, phone_number='7953483551'
             return user, created
 

@@ -12,7 +12,8 @@ from django_filters import rest_framework as dj_filters
 from SocializationProject import settings
 from socialize_main.models import User, Observed, Tutor, Administrator, Organization
 from socialize_main.serializers.users import UserRegSerializer, UsersSerializer, ObservedSerializer, \
-    ChangeUserInfoSerializer, ChangePasswordSerializer, TutorsSerializer, AppointObservedSerializer
+    ChangeUserInfoSerializer, ChangePasswordSerializer, TutorsSerializer, AppointObservedSerializer, \
+    ChangePasswordAdminSerializer
 
 
 def search_role(user):
@@ -124,7 +125,6 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             user.second_name = serializer.validated_data['second_name']
             user.patronymic = serializer.validated_data['patronymic']
             user.email = serializer.validated_data['email']
-            print(user)
             old_role_obj, old_role_name = search_role(user)
             if user.observed_user.count() > 0:
                 obs = user.observed_user.first()
@@ -154,7 +154,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 # Формируем URL для сохраненного изображения
                 image_url = os.path.join(settings.MEDIA_URL, 'uploaded_images', image_name)
                 user.photo = image_url
-            if serializer.validated_data['role'] and serializer.validated_data['role'] != old_role_name:
+            if serializer.validated_data.get('role', False) and serializer.validated_data['role'] != old_role_name:
                 if serializer.validated_data['role'] == 'tutor':
                     Tutor.objects.get_or_create(user=user, organization=Organization.objects.first())
                 elif serializer.validated_data['role'] == 'administrator':
@@ -167,7 +167,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                                                    date_of_birth=serializer.validated_data['birthday'],
                                                    address='г. Москва')
 
-            if not old_role_name == 'no role':
+            if not old_role_name == 'no role' and serializer.validated_data.get('role', False) and serializer.validated_data['role'] != old_role_name: ##TODO: Подумать о выражении
                 old_role_obj.delete()
             user.save()
             return JsonResponse({'success': True, 'result': UsersSerializer(user).data}, status=status.HTTP_200_OK)
@@ -186,6 +186,18 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             user.save()
             return JsonResponse({'success': True, 'result': UsersSerializer(user).data}, status=status.HTTP_200_OK)
         return JsonResponse({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def change_password_user(self, request, pk):
+        user = User.objects.get(pk=pk)
+        if user:
+            serializer = ChangePasswordAdminSerializer(data=request.data)
+            if serializer.is_valid():
+                user.set_password(serializer.validated_data['new_password'])
+                user.save()
+                return JsonResponse({'success': True, 'result': UsersSerializer(user).data},
+                                    status=status.HTTP_200_OK)
+            return JsonResponse({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['POST'])
     def register_user(self, request):

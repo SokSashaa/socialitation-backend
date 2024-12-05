@@ -12,6 +12,7 @@ class OrganizationsView(viewsets.ModelViewSet):
     serializer_class = OrganizationSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     ordering = ['-pk']
+    search_fields = ['name','site']
 
     def get_queryset(self):
         queryset = Organization.objects.all()
