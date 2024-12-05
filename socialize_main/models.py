@@ -26,7 +26,7 @@ class User(AbstractUser):
     photo = models.CharField(blank=True, null=True, max_length=500)
     phone_number = models.CharField(blank=False, null=False, max_length=12, default='+77777777777')
     patronymic = models.CharField(blank=True, null=True, max_length=150)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='organization', default=1)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='organization', default=Organization.objects.first())
     REQUIRED_FIELDS = []
     USERNAME_FIELD = 'login'
     objects = CustomUserManager()
