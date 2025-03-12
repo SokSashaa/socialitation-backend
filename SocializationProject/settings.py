@@ -138,6 +138,19 @@ CORS_ALLOWED_ORIGINS = [
     'https://www.unvr-ubnt20.uvelirsoft.ru'
 ]
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    'http://localhost:8000',
+    'http://0.0.0.0:8000',
+    'http://0.0.0.0:5173',
+    'http://localhost:5173',
+    'http://37.18.74.193',
+    'http://unvr-ubnt20.uvelirsoft.ru',
+    'http://www.unvr-ubnt20.uvelirsoft.ru',
+    'https://unvr-ubnt20.uvelirsoft.ru',
+    'https://www.unvr-ubnt20.uvelirsoft.ru'
+]
+
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS':
         'rest_framework.pagination.PageNumberPagination',

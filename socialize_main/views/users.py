@@ -70,7 +70,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             user = User.objects.get(pk=pk)
             # image_name = user.photo[user.photo.rfind('\\') + 1:]
             # image = os.path.join(settings.MEDIA_ROOT, 'uploaded_images', image_name)
-            if os.path.isfile(user.photo):
+            if user.photo is not None and os.path.isfile(user.photo):
                 os.remove(user.photo)
 
             user.delete()
@@ -113,6 +113,10 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                                 status=status.HTTP_200_OK)
         except Tutor.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Тьютор не найден']}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
+            return JsonResponse({'success': False, 'error': 'Неверный параметр'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': e}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['POST'])
     def change_user_info(self, request, pk):

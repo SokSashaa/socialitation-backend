@@ -1,13 +1,9 @@
 import shutil
-import time
+import random
 
+from django.views.decorators.csrf import csrf_exempt
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
-from django.shortcuts import render
-from django import forms
-from django.core.files.storage import FileSystemStorage
-from django.shortcuts import render, redirect
-import os
 import zipfile
 from django.core.files.storage import FileSystemStorage
 from django.shortcuts import render, redirect
@@ -33,30 +29,43 @@ class UploadArchiveForm(forms.Form):
     game_description = forms.CharField()
 
 
+@csrf_exempt ## убрать декоратор когда закончится тестирование
 def upload_archive(request):
     if request.method == 'POST':
         form = UploadArchiveForm(request.POST, request.FILES)
         if form.is_valid():
             archive_file = form.cleaned_data['archive_file']
-            game_name = form.cleaned_data['game_title']
+            game_name = form.cleaned_data['game_title'].strip().replace(' ', '_')
             game_description = form.cleaned_data['game_description']
             fs = FileSystemStorage(location='templates/games/')
+
+            if archive_file.size > 10*1024*1024:
+               return JsonResponse({'success': False, 'error': 'ZIP файл больше 10 МБ'}, status=status.HTTP_400_BAD_REQUEST)
+
             filename = fs.save(archive_file.name, archive_file)
 
             # Распаковка архива
-            archive_path = os.path.join(fs.location, filename)
-            with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-                zip_ref.extractall(os.path.join(fs.location, game_name))
+            archive_path = os.path.join(fs.location, filename) #обработку ошибок архива
+            try:
+                with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+                    files_in_archive = zip_ref.namelist()
+                    if 'index.html' not in files_in_archive:
+                        return JsonResponse({'success': False, 'error': 'Отсутствует index.html файл'},
+                                        status=status.HTTP_400_BAD_REQUEST)
 
+                    zip_ref.extractall(os.path.join(fs.location, f"{game_name}_{random.randint(1, 10000)}"))
+            except zipfile.BadZipFile:
+                return JsonResponse({'success': False, 'error': 'Архив поврежден или некорректен'},
+                                    status=status.HTTP_400_BAD_REQUEST)
             # Удаление архива после распаковки
             os.remove(archive_path)
 
             # Создание объекта Games
-            Games.objects.create(name=game_name, description=game_description, link=f'http://5.35.89.117:8084/game/{game_name}')
+            Games.objects.create(name=game_name, description=game_description, link=f'http://5.35.89.117:8084/game/{game_name}') #исправить ссылку
             return redirect('games_list')  # Редирект на список игр или другое представление
     else:
         form = UploadArchiveForm()
-    return render(request, 'upload_archive.html', {'form': form})
+    return render(request, 'upload_archive.html', {'form': form}) #скорее всего выводить просто ошибку
 
 
 

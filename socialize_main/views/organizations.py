@@ -40,8 +40,8 @@ class OrganizationsView(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['DELETE'])
     def delete_org(self, request, pk):
-        organization = Organization.objects.get(pk=pk)
         try:
+            organization = Organization.objects.get(pk=pk)
             organization.delete()
             return JsonResponse({'success': True, 'result': 'Организация удалена'}, status=status.HTTP_200_OK)
         except Organization.DoesNotExist:
