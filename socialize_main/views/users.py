@@ -1,8 +1,12 @@
 import base64
 import os
 import random
+from pprint import pprint
 
+from django.contrib.sessions.serializers import JSONSerializer
 from django.core.files.base import ContentFile
+from django.db import IntegrityError
+from django.db.models import Q
 from django.http import JsonResponse
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
@@ -13,28 +17,44 @@ from SocializationProject import settings
 from socialize_main.models import User, Observed, Tutor, Administrator, Organization
 from socialize_main.serializers.users import UserRegSerializer, UsersSerializer, ObservedSerializer, \
     ChangeUserInfoSerializer, ChangePasswordSerializer, TutorsSerializer, AppointObservedSerializer, \
-    ChangePasswordAdminSerializer
+    ChangePasswordAdminSerializer, AllTutorsSerializer
 
+
+# def search_role(user):
+#     old_role_obj = ''
+#     old_role_name = ''
+#     try:
+#         old_role_obj = Tutor.objects.get(user=user)
+#         old_role_name = 'tutor'
+#     except Tutor.DoesNotExist:
+#         try:
+#             old_role_obj = Observed.objects.get(user=user)
+#             old_role_name = 'observed'
+#         except Observed.DoesNotExist:
+#             try:
+#                 old_role_obj = Administrator.objects.get(user=user)
+#                 old_role_name = 'administrator'
+#             except Administrator.DoesNotExist:
+#                 old_role_name = 'no role'
+#                 old_role_obj = {}
+#     return old_role_obj, old_role_name
+#
 
 def search_role(user):
-    old_role_obj = ''
-    old_role_name = ''
-    print(user)
-    try:
-        old_role_obj = Tutor.objects.get(user=user)
-        old_role_name = 'tutor'
-    except Tutor.DoesNotExist:
+    roles = [
+        ('tutor', Tutor),
+        ('observed', Observed),
+        ('administrator', Administrator),
+    ]
+
+    for old_role_name, model in roles:
         try:
-            old_role_obj = Observed.objects.get(user=user)
-            old_role_name = 'observed'
-        except Observed.DoesNotExist:
-            try:
-                old_role_obj = Administrator.objects.get(user=user)
-                old_role_name = 'administrator'
-            except Administrator.DoesNotExist:
-                old_role_name = 'no role'
-                old_role_obj = {}
-    return old_role_obj, old_role_name
+            old_role_obj = model.objects.get(user=user)
+            return old_role_obj, old_role_name
+        except model.DoesNotExist:
+            pass
+
+    return None, 'no role'
 
 
 def filter_by_role(queryset, name, value):
@@ -107,7 +127,8 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     def get_observeds_by_tutor(self, request, pk):
         try:
             tutor = User.objects.get(pk=pk)
-            observeds = list(Observed.objects.filter(tutor=tutor.tutor_user.first()).values_list('user__pk', flat=True))
+            observeds = list(
+                Observed.objects.filter(tutor=tutor).values_list('user__pk', flat=True))  # TODO: Тут было исправлено
             users = User.objects.filter(pk__in=observeds)
             return JsonResponse({'success': True, 'results': ObservedSerializer(users, many=True).data},
                                 status=status.HTTP_200_OK)
@@ -129,7 +150,9 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             user.second_name = serializer.validated_data['second_name']
             user.patronymic = serializer.validated_data['patronymic']
             user.email = serializer.validated_data['email']
+            user.organization = Organization.objects.get(id=serializer.validated_data['organization'])
             old_role_obj, old_role_name = search_role(user)
+
             if user.observed_user.count() > 0:
                 obs = user.observed_user.first()
                 obs.date_of_birth = serializer.validated_data['birthday']
@@ -158,26 +181,58 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 # Формируем URL для сохраненного изображения
                 image_url = os.path.join(settings.MEDIA_URL, 'uploaded_images', image_name)
                 user.photo = image_url
-            if serializer.validated_data.get('role', False) and serializer.validated_data['role'] != old_role_name:
-                if serializer.validated_data['role'] == 'tutor':
-                    Tutor.objects.get_or_create(user=user, organization=Organization.objects.first())
-                elif serializer.validated_data['role'] == 'administrator':
-                    Administrator.objects.create(user=user)
-                elif serializer.validated_data['role'] == 'observed':
-                    Observed.objects.get_or_create(user=user, tutor=Tutor.objects.get(
-                        pk=serializer.validated_data['role']['tutor_id']),
-                                                   organization=Organization.objects.first(),
-                                                   ##TODO здесь не первую запись, а то что укажут на фронте. Если что есть в сереализаторе
-                                                   date_of_birth=serializer.validated_data['birthday'],
-                                                   address='г. Москва')
 
-            if not old_role_name == 'no role' and serializer.validated_data.get('role', False) and serializer.validated_data['role'] != old_role_name: ##TODO: Подумать о выражении
+                # Проверка на существование роли и определенных полей
+            has_required_keys = (
+                    serializer.validated_data.get('role', False) and
+                    'code' in serializer.validated_data['role'] and
+                    'tutor_id' in serializer.validated_data['role']
+            )
+
+            if (
+                    has_required_keys
+                    # and serializer.validated_data['role']['code'] != old_role_name
+            ):
+                role_code = serializer.validated_data['role']['code']
+                # определяем роль пользователя
+                if role_code == 'tutor':
+                    Tutor.objects.get_or_create(user=user)
+                elif role_code == 'administrator':
+                    Administrator.objects.create(user=user)
+                elif role_code == 'observed':
+                    tutor = User.objects.get(id=serializer.validated_data['role']['tutor_id'])
+                    defaults = {
+                        'tutor': tutor,
+                        'date_of_birth': serializer.validated_data['birthday'],
+                        'address': 'г. Москва',
+                    }
+                    Observed.objects.update_or_create(user=user, defaults=defaults)
+
+            if (
+                    not old_role_name == 'no role'
+                    and has_required_keys
+                    and serializer.validated_data['role']['code'] != old_role_name
+            ):
+                # удаляем старую роль пользователя
                 old_role_obj.delete()
             user.save()
             return JsonResponse({'success': True, 'result': UsersSerializer(user).data}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Такого пользователя не найдено']},
                                 status=status.HTTP_400_BAD_REQUEST)
+        except Organization.DoesNotExist:
+            return JsonResponse({'success': False, 'errors': 'Такая организация не найдена'},
+                                status=status.HTTP_404_NOT_FOUND)
+        except Tutor.DoesNotExist:
+            return JsonResponse({'success': False, 'errors': 'Тьютор не найден'},
+                                status=status.HTTP_404_NOT_FOUND)
+        except KeyError as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Не найдено обязательное поле: {e}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except IntegrityError as e:
+            return JsonResponse({"error": "Указанная почта уже занята."}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'])
     def change_password(self, request):
@@ -247,8 +302,19 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
 
     @action(methods=['GET'], detail=False)
     def get_tutors(self, request):
-        tutors = Tutor.objects.all()
-        return JsonResponse({'success': True, 'results': TutorsSerializer(tutors, many=True).data})
+        # tutors = Tutor.objects.all() #TODO: Тут было исправлено
+        tutors = User.objects.exclude(id__in=Observed.objects.values_list('user_id', flat=True))
+        return JsonResponse({'success': True, 'results': AllTutorsSerializer(tutors, many=True).data})
+
+    @action(methods=['GET'], detail=True)
+    def get_tutor_by_observed(self, request, pk):
+        try:
+            tutor_id = Observed.objects.get(user_id=pk).tutor_id
+            user = User.objects.get(pk=tutor_id)
+            return JsonResponse({'success': True, 'result': UsersSerializer(user).data})
+        except Observed.DoesNotExist:
+            return JsonResponse({'success': False, 'result': 'Наблюдаемый не найден'},
+                                status=status.HTTP_404_NOT_FOUND)
 
     @action(methods=['POST'], detail=False)
     def appoint_observed(self, request):

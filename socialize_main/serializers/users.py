@@ -18,6 +18,7 @@ class UsersSerializer(serializers.ModelSerializer):
             return obj.observed_user.first().date_of_birth
         else:
             return None
+
     def get_role(self, obj):
         if obj.tutor_user.count() > 0:
             return "tutor"
@@ -30,8 +31,11 @@ class UsersSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'login', 'email', 'second_name', 'name', 'patronymic', 'role', 'photo', 'birthday', 'phone_number','organization')
+        fields = (
+        'id', 'login', 'email', 'second_name', 'name', 'patronymic', 'role', 'photo', 'birthday', 'phone_number',
+        'organization')
         read_only_fields = ['id']
+
 
 class ObservedSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField(method_name='get_role')
@@ -54,6 +58,7 @@ class ObservedSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'second_name', 'name', 'patronymic', 'role', 'games', 'tests')
         read_only_fields = ['id']
 
+
 class ChangeUserInfoSerializer(serializers.Serializer):
     name = serializers.CharField(help_text='Имя юзера')
     second_name = serializers.CharField(help_text='Фамилия юзера')
@@ -62,14 +67,17 @@ class ChangeUserInfoSerializer(serializers.Serializer):
     birthday = serializers.DateField()
     photo = serializers.CharField(help_text='Ссылка на фото', required=False, allow_null=True, allow_blank=True)
     role = serializers.JSONField(help_text='Роль', required=False)
+    organization = serializers.IntegerField(help_text='Организация')
 
 
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
 
+
 class ChangePasswordAdminSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
+
 
 class UserRegSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -77,11 +85,11 @@ class UserRegSerializer(serializers.ModelSerializer):
     role = serializers.JSONField(default={})
     photo = serializers.CharField()
 
-
-
     class Meta:
         model = User
-        fields = ('login', 'email', 'name', 'second_name', 'patronymic', 'password', 'birthday', 'role', 'photo', 'phone_number', 'organization')
+        fields = (
+        'login', 'email', 'name', 'second_name', 'patronymic', 'password', 'birthday', 'role', 'photo', 'phone_number',
+        'organization')
 
     @transaction.atomic
     def create(self, validated_data):
@@ -103,18 +111,34 @@ class UserRegSerializer(serializers.ModelSerializer):
                 user.set_password(validated_data['password'])
                 user.save()
                 if validated_data['role'].get('code', '') == 'tutor':
-                    tutor = Tutor.objects.get_or_create(user=user), ##organization=Organization.objects.first()) ## Organization.objects.get(pk=validated_data['role']['organization_id'] ##TODO Исправить на это, когда появится функционал организация
+                    tutor = Tutor.objects.get_or_create(
+                        user=user),  ##organization=Organization.objects.first()) ## Organization.objects.get(pk=validated_data['role']['organization_id'] ##TODO Исправить на это, когда появится функционал организация
                 elif validated_data['role'].get('code', '') == 'observed':
-                    observed = Observed.objects.get_or_create(user=user, tutor=Tutor.objects.get(pk=validated_data['role']['tutor_id']),
-                                                            ##  organization=Organization.objects.first(), ## Organization.objects.get(pk=validated_data['role']['organization_id']
-                                                              date_of_birth=validated_data['birthday'], address='г. Москва') ## в скобках, phone_number='7953483551'
+                    observed = Observed.objects.get_or_create(user=user, tutor=User.objects.get( #TODO: Тут было исправлено
+                        pk=validated_data['role']['tutor_id']),
+                                                              ##  organization=Organization.objects.first(), ## Organization.objects.get(pk=validated_data['role']['organization_id']
+                                                              date_of_birth=validated_data['birthday'],
+                                                              address='г. Москва')  ## в скобках, phone_number='7953483551'
             return user, created
+
 
 class TutorsSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField(source='user.name')
     second_name = serializers.CharField(source='user.second_name')
     patronymic = serializers.CharField(source='user.patronymic')
+
+
+class AllTutorsSerializer(serializers.ModelSerializer):
+    name = serializers.CharField()
+    second_name = serializers.CharField()
+    patronymic = serializers.CharField()
+
+    class Meta:
+        model = User
+        fields = ('id', 'name', 'second_name', 'patronymic')
+        read_only_fields = ['id']
+
 
 class AppointObservedSerializer(serializers.Serializer):
     link = serializers.ListField(help_text='Список юзеров для привязки', child=serializers.IntegerField())

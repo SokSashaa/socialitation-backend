@@ -18,7 +18,7 @@ class Organization(models.Model):
 
 
 class User(AbstractUser):
-    email = models.CharField(blank=True, null=True, unique=False, max_length=150)
+    email = models.CharField(blank=True, null=True, unique=True, max_length=150)
     username = None
     second_name = models.CharField(blank=True, null=False, max_length=150, default='Иванов')
     name = models.CharField(blank=True, null=False, max_length=150, default='Иван')
@@ -42,7 +42,7 @@ class Tutor(models.Model):
 
 class Observed(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='observed_user')
-    tutor = models.ForeignKey(Tutor, on_delete=models.CASCADE, related_name='observed_tutor')
+    tutor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='observed_tutor') #TODO: Тут было исправлено
     # organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='observed_organization')
     date_of_birth = models.DateField(blank=False, null=False)
     address = models.CharField(blank=False, null=False, max_length=150)
