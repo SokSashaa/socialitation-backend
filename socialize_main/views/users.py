@@ -150,8 +150,10 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             user.second_name = serializer.validated_data['second_name']
             user.patronymic = serializer.validated_data['patronymic']
             user.email = serializer.validated_data['email']
-            user.organization = Organization.objects.get(id=serializer.validated_data['organization'])
             old_role_obj, old_role_name = search_role(user)
+
+            if serializer.validated_data.get('organization', False):
+                user.organization = Organization.objects.get(id=serializer.validated_data['organization'])
 
             if user.observed_user.count() > 0:
                 obs = user.observed_user.first()
@@ -304,7 +306,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     def get_tutors(self, request):
         # tutors = Tutor.objects.all() #TODO: Тут было исправлено
         tutors = User.objects.exclude(id__in=Observed.objects.values_list('user_id', flat=True))
-        return JsonResponse({'success': True, 'results': AllTutorsSerializer(tutors, many=True).data})
+        return JsonResponse({'success': True, 'result': AllTutorsSerializer(tutors, many=True).data})
 
     @action(methods=['GET'], detail=True)
     def get_tutor_by_observed(self, request, pk):

@@ -67,7 +67,7 @@ class ChangeUserInfoSerializer(serializers.Serializer):
     birthday = serializers.DateField()
     photo = serializers.CharField(help_text='Ссылка на фото', required=False, allow_null=True, allow_blank=True)
     role = serializers.JSONField(help_text='Роль', required=False)
-    organization = serializers.IntegerField(help_text='Организация')
+    organization = serializers.IntegerField(help_text='Организация',required=False)
 
 
 class ChangePasswordSerializer(serializers.Serializer):
