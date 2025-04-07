@@ -24,9 +24,10 @@ class User(AbstractUser):
     name = models.CharField(blank=True, null=False, max_length=150, default='Иван')
     login = models.CharField(blank=False, null=False, unique=True, max_length=100)
     photo = models.CharField(blank=True, null=True, max_length=500)
-    phone_number = models.CharField(blank=False, null=False, max_length=12, default='+77777777777')
+    phone_number = models.CharField(blank=False, null=False, max_length=12, default='+77777777777', unique=True)
     patronymic = models.CharField(blank=True, null=True, max_length=150)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='organization')
+    birthday = models.DateField(blank=False, null=False, default='1990-01-01')
     REQUIRED_FIELDS = []
     USERNAME_FIELD = 'login'
     objects = CustomUserManager()
@@ -44,7 +45,7 @@ class Observed(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='observed_user')
     tutor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='observed_tutor') #TODO: Тут было исправлено
     # organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='observed_organization')
-    date_of_birth = models.DateField(blank=False, null=False)
+    # date_of_birth = models.DateField(blank=False, null=False)
     address = models.CharField(blank=False, null=False, max_length=150)
 
 

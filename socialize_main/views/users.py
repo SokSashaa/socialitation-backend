@@ -3,6 +3,7 @@ import os
 import random
 from pprint import pprint
 
+from billiard.five import values
 from django.contrib.sessions.serializers import JSONSerializer
 from django.core.files.base import ContentFile
 from django.db import IntegrityError
@@ -19,26 +20,6 @@ from socialize_main.serializers.users import UserRegSerializer, UsersSerializer,
     ChangeUserInfoSerializer, ChangePasswordSerializer, TutorsSerializer, AppointObservedSerializer, \
     ChangePasswordAdminSerializer, AllTutorsSerializer
 
-
-# def search_role(user):
-#     old_role_obj = ''
-#     old_role_name = ''
-#     try:
-#         old_role_obj = Tutor.objects.get(user=user)
-#         old_role_name = 'tutor'
-#     except Tutor.DoesNotExist:
-#         try:
-#             old_role_obj = Observed.objects.get(user=user)
-#             old_role_name = 'observed'
-#         except Observed.DoesNotExist:
-#             try:
-#                 old_role_obj = Administrator.objects.get(user=user)
-#                 old_role_name = 'administrator'
-#             except Administrator.DoesNotExist:
-#                 old_role_name = 'no role'
-#                 old_role_obj = {}
-#     return old_role_obj, old_role_name
-#
 
 def search_role(user):
     roles = [
@@ -130,7 +111,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             observeds = list(
                 Observed.objects.filter(tutor=tutor).values_list('user__pk', flat=True))  # TODO: Тут было исправлено
             users = User.objects.filter(pk__in=observeds)
-            return JsonResponse({'success': True, 'results': ObservedSerializer(users, many=True).data},
+            return JsonResponse({'success': True, 'result': ObservedSerializer(users, many=True).data},
                                 status=status.HTTP_200_OK)
         except Tutor.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Тьютор не найден']}, status=status.HTTP_400_BAD_REQUEST)
@@ -150,15 +131,19 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             user.second_name = serializer.validated_data['second_name']
             user.patronymic = serializer.validated_data['patronymic']
             user.email = serializer.validated_data['email']
+            user.date_of_birth = serializer.validated_data['birthday']
+            user.phone_number = serializer.validated_data['phone_number']
             old_role_obj, old_role_name = search_role(user)
 
             if serializer.validated_data.get('organization', False):
                 user.organization = Organization.objects.get(id=serializer.validated_data['organization'])
 
-            if user.observed_user.count() > 0:
-                obs = user.observed_user.first()
-                obs.date_of_birth = serializer.validated_data['birthday']
-                obs.save()
+            # if user.observed_user.count() > 0:
+            #     obs = user.observed_user.first()
+            #     obs.address = serializer.validated_data['address']
+            #     obs.save()
+            #     print(obs.address)
+
             if serializer.validated_data.get('photo', False):
                 image_data = serializer.validated_data['photo']
                 image_name = f"{random.randint(1, 10000)}_photo.png"  # уникальное имя для каждого пользователя
@@ -200,13 +185,12 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 if role_code == 'tutor':
                     Tutor.objects.get_or_create(user=user)
                 elif role_code == 'administrator':
-                    Administrator.objects.create(user=user)
+                    Administrator.objects.get_or_create(user=user)
                 elif role_code == 'observed':
                     tutor = User.objects.get(id=serializer.validated_data['role']['tutor_id'])
                     defaults = {
                         'tutor': tutor,
-                        'date_of_birth': serializer.validated_data['birthday'],
-                        'address': 'г. Москва',
+                        'address': serializer.validated_data['address'],
                     }
                     Observed.objects.update_or_create(user=user, defaults=defaults)
 
