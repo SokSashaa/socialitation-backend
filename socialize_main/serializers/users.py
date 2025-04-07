@@ -89,7 +89,7 @@ class UserRegSerializer(serializers.ModelSerializer):
     birthday = serializers.DateField()
     role = serializers.JSONField(default={})
     photo = serializers.CharField()
-    address = serializers.CharField()
+    address = serializers.CharField(allow_blank=True)
 
     class Meta:
         model = User
