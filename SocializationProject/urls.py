@@ -44,7 +44,6 @@ urlpatterns = [path('api/admin/', admin.site.urls), path('doc/', schema_view.wit
                ]
 
 urlpatterns += socialize_main.urls.urlpatterns
-print(urlpatterns)
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

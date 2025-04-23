@@ -38,14 +38,11 @@ class User(AbstractUser):
 
 class Tutor(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tutor_user')
-    # organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='tutor_organization')
 
 
 class Observed(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='observed_user')
-    tutor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='observed_tutor') #TODO: Тут было исправлено
-    # organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='observed_organization')
-    # date_of_birth = models.DateField(blank=False, null=False)
+    tutor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='observed_tutor')
     address = models.CharField(blank=False, null=False, max_length=150)
 
 
@@ -100,6 +97,8 @@ class Games(models.Model):
     name = models.CharField(blank=False, null=False, max_length=150)
     description = models.CharField(blank=False, null=False, max_length=300)
     link = models.CharField(blank=False, null=False, max_length=150)
+    directory_name = models.CharField(blank=False, null=False, max_length=150, unique=True, editable=False)
+    icon = models.CharField(blank=True, null=True, max_length=500)
 
 
 class GamesObserved(models.Model):

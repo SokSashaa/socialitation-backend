@@ -16,8 +16,8 @@ router.register(r'api/games_list', GamesView, basename='games')
 router.register(r'api/organizations', OrganizationsView, basename='organizations')
 
 urlpatterns = [
-    path('api/upload/', games.upload_archive, name='upload_archive'),
-    path('api/games/', games.games_list, name='games_list'),
+    # path('api/upload/', games.upload_archive, name='upload_archive'),
+    # path('api/games/', games.games_list, name='games_list'),
     path('api/game/<str:game_name>/', games.game_view, name='game_view'),
 ]
 
