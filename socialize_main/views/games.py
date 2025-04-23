@@ -132,13 +132,13 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
             game_link = request.build_absolute_uri(reverse('game_view', kwargs={'game_name': directory_name}))
 
             # Создание объекта Games
-            Games.objects.create(name=game_name,
+            game = Games.objects.create(name=game_name,
                                  description=game_description,
                                  link=game_link,
                                  directory_name=directory_name,
                                  icon=image_str)
 
-            return JsonResponse({'success': True, 'result': 'Успех'}, status=status.HTTP_200_OK)
+            return JsonResponse({'success': True, 'result': GameSerializer(game).data}, status=status.HTTP_200_OK)
 
         except zipfile.BadZipFile:
             return JsonResponse({'success': False, 'error': 'Архив поврежден или некорректен'},
