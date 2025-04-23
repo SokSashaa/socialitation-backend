@@ -1,24 +1,16 @@
-import base64
-import os
-import random
-from pprint import pprint
-
-from billiard.five import values
-from django.contrib.sessions.serializers import JSONSerializer
-from django.core.files.base import ContentFile
 from django.db import IntegrityError
-from django.db.models import Q
 from django.http import JsonResponse
+from django_filters import rest_framework as dj_filters
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
-from django_filters.rest_framework import DjangoFilterBackend
-from django_filters import rest_framework as dj_filters
 
-from SocializationProject import settings
 from socialize_main.models import User, Observed, Tutor, Administrator, Organization
 from socialize_main.serializers.users import UserRegSerializer, UsersSerializer, ObservedSerializer, \
-    ChangeUserInfoSerializer, ChangePasswordSerializer, TutorsSerializer, AppointObservedSerializer, \
+    ChangeUserInfoSerializer, ChangePasswordSerializer, AppointObservedSerializer, \
     ChangePasswordAdminSerializer, AllTutorsSerializer
+from socialize_main.utils.deleteImage import delete_image
+from socialize_main.utils.savingImage import saving_image
 
 
 def search_role(user):
@@ -58,7 +50,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     serializer_class = UsersSerializer
     filterset_fields = []
-    ordering = ['-pk', 'name']  # TODO ЗАЛИТЬ
+    ordering = ['-pk', 'name']
     search_fields = ['name']
 
     def get_queryset(self):
@@ -69,10 +61,9 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     def delete_user(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
-            # image_name = user.photo[user.photo.rfind('\\') + 1:]
-            # image = os.path.join(settings.MEDIA_ROOT, 'uploaded_images', image_name)
-            if user.photo is not None and os.path.isfile(user.photo):
-                os.remove(user.photo)
+
+            if user.photo:
+                delete_image(user.photo)
 
             user.delete()
             return JsonResponse({'success': True, 'result': 'Пользователь удален'}, status=status.HTTP_200_OK)
@@ -101,7 +92,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 pass
         else:
             users = User.objects.filter(observed_user__isnull=False)
-        return JsonResponse({'success': True, 'results': ObservedSerializer(users, many=True).data},
+        return JsonResponse({'success': True, 'result': ObservedSerializer(users, many=True).data},
                             status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['GET'])
@@ -138,35 +129,11 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             if serializer.validated_data.get('organization', False):
                 user.organization = Organization.objects.get(id=serializer.validated_data['organization'])
 
-            # if user.observed_user.count() > 0:
-            #     obs = user.observed_user.first()
-            #     obs.address = serializer.validated_data['address']
-            #     obs.save()
-            #     print(obs.address)
+            #Проверка и сохранение изображения
+            image_url = saving_image(serializer, 'photo')
 
-            if serializer.validated_data.get('photo', False):
-                image_data = serializer.validated_data['photo']
-                image_name = f"{random.randint(1, 10000)}_photo.png"  # уникальное имя для каждого пользователя
-                image_path = os.path.join(settings.MEDIA_ROOT, 'uploaded_images', image_name)
-
-                # Ensure the directory exists
-                os.makedirs(os.path.dirname(image_path), exist_ok=True)
-
-                # Декодируем изображение из base64
-                try:
-                    format, imgstr = image_data.split(';base64,')
-                except ValueError:
-                    return JsonResponse({'success': False, 'errors': ['Неправильный формат изображения']},
-                                        status=status.HTTP_400_BAD_REQUEST)
-
-                data = ContentFile(base64.b64decode(imgstr), name=image_name)
-
-                # Сохраняем изображение
-                with open(image_path, 'wb') as destination:
-                    destination.write(data.read())
-
-                # Формируем URL для сохраненного изображения
-                image_url = os.path.join(settings.MEDIA_URL, 'uploaded_images', image_name)
+            if image_url:
+                delete_image(user.photo)
                 user.photo = image_url
 
                 # Проверка на существование роли и определенных полей
@@ -250,35 +217,12 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
         if serializer.is_valid():
             user, created = serializer.save()
             if created:
-                try:
-                    if serializer.validated_data['photo']:
-                        image_data = serializer.validated_data['photo']
-                        image_name = f"{random.randint(1, 10000)}_photo.png"  # уникальное имя для каждого пользователя
-                        image_path = os.path.join(settings.MEDIA_ROOT, 'uploaded_images', image_name)
+                image_str = saving_image(serializer, 'photo')
 
-                        # Ensure the directory exists
-                        os.makedirs(os.path.dirname(image_path), exist_ok=True)
+                user.photo = image_str
 
-                        # Декодируем изображение из base64
-                        try:
-                            format, imgstr = image_data.split(';base64,')
-                        except ValueError:
-                            pass
-
-                        data = ContentFile(base64.b64decode(imgstr), name=image_name)
-
-                        # Сохраняем изображение
-                        with open(image_path, 'wb') as destination:
-                            destination.write(data.read())
-
-                        # Формируем URL для сохраненного изображения
-                        image_url = os.path.join(settings.MEDIA_URL, 'uploaded_images', image_name)
-                        user.photo = image_url
-                    else:
-                        user.photo = ''
-                except KeyError:
-                    pass
                 user.save()
+
                 return JsonResponse({'success': True, 'result': UsersSerializer(user).data}, status=status.HTTP_200_OK)
             else:
                 return JsonResponse(

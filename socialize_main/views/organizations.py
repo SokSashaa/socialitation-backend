@@ -1,11 +1,10 @@
-from django.contrib.admin import action
 from django.http import JsonResponse
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
+from rest_framework.decorators import action
 
 from socialize_main.models import Organization
 from socialize_main.serializers.organizations import OrganizationSerializer
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.decorators import action
 
 
 class OrganizationsView(viewsets.ModelViewSet):
@@ -22,7 +21,7 @@ class OrganizationsView(viewsets.ModelViewSet):
     def create_org(self, request):
         serializer = OrganizationSerializer(data=request.data)
         if not serializer.is_valid():
-            return JsonResponse({'success': False, 'errors': [serializer.errors]}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'success': False, 'error': [serializer.errors]}, status=status.HTTP_400_BAD_REQUEST)
         else:
             organization, created = Organization.objects.get_or_create(
                 name=serializer.data['name'],
@@ -32,7 +31,7 @@ class OrganizationsView(viewsets.ModelViewSet):
                 site=serializer.data['site'],
             )
         if created:
-            return JsonResponse({'success': True, 'organization': OrganizationSerializer(organization).data},
+            return JsonResponse({'success': True, 'result': OrganizationSerializer(organization).data},
                                 status=status.HTTP_201_CREATED)
         else:
             return JsonResponse({'success': False, 'error': 'Организация уже существует'},
@@ -47,17 +46,17 @@ class OrganizationsView(viewsets.ModelViewSet):
         except Organization.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Организация не найдена'}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=['PUT'])
+    @action(detail=True, methods=['POST', 'PUT'])
     def update_org(self, request, pk):
         try:
             organization = Organization.objects.get(pk=pk)
             serializer = OrganizationSerializer(instance=organization, data=request.data)
             if not serializer.is_valid():
-                return JsonResponse({'success': False, 'errors': serializer.errors})
+                return JsonResponse({'success': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
             serializer.save()
 
-            return JsonResponse({'success': True, 'organization': OrganizationSerializer(organization).data},
+            return JsonResponse({'success': True, 'result': OrganizationSerializer(organization).data},
                                 status=status.HTTP_200_OK)
         except Organization.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Организация не найдена'}, status=status.HTTP_404_NOT_FOUND)

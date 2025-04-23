@@ -1,12 +1,10 @@
 from django.db import transaction
 from django.db.models import Q
-from rest_flex_fields import FlexFieldsModelSerializer
 from rest_framework import serializers
 
-from socialize_main.serializers.tests import SingleTestSerializer, TestObsSerializer
+from socialize_main.models import Tutor, User, GamesObserved, TestObservered, Observed, Administrator
 from socialize_main.serializers.games import SingleGameSerializer
-
-from socialize_main.models import Tutor, User, GamesObserved, TestObservered, Organization, Observed, Administrator
+from socialize_main.serializers.tests import TestObsSerializer
 
 
 class UsersSerializer(serializers.ModelSerializer):
