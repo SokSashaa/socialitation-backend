@@ -1,41 +1,28 @@
-from django.db import IntegrityError
+from django.db import IntegrityError, connection
+from django.db.models import When, Case, Value, CharField
 from django.http import JsonResponse
 from django_filters import rest_framework as dj_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 
+from socialize_main.constants.roles import Roles
 from socialize_main.models import User, Observed, Tutor, Administrator, Organization
 from socialize_main.serializers.users import UserRegSerializer, UsersSerializer, ObservedSerializer, \
     ChangeUserInfoSerializer, ChangePasswordSerializer, AppointObservedSerializer, \
     ChangePasswordAdminSerializer, AllTutorsSerializer
 from socialize_main.utils.deleteImage import delete_image
 from socialize_main.utils.savingImage import saving_image
-
-
-def search_role(user):
-    roles = [
-        ('tutor', Tutor),
-        ('observed', Observed),
-        ('administrator', Administrator),
-    ]
-
-    for old_role_name, model in roles:
-        try:
-            old_role_obj = model.objects.get(user=user)
-            return old_role_obj, old_role_name
-        except model.DoesNotExist:
-            pass
-
-    return None, 'no role'
+from socialize_main.utils.search_role import search_role
 
 
 def filter_by_role(queryset, name, value):
-    if queryset.objects.filter(tutor_user__isnull=False) and value == 'tutor':
+    if queryset.objects.filter(tutor_user__isnull=False) and value == Roles.TUTOR.value:
         queryset = queryset.objects.filter(tutor_user__isnull=False)
-    elif queryset.objects.filter(observed_user__isnull=False) and value == 'observed':
+    elif queryset.objects.filter(observed_user__isnull=False) and value == Roles.OBSERVED.value:
         queryset = queryset.objects.filter(observed_user__isnull=False)
-    elif queryset.objects.filter(administrator_user__isnull=False) and value == 'administrator':
+    elif queryset.objects.filter(administrator_user__isnull=False) and value == Roles.ADMINISTRATOR.value:
         queryset = queryset.objects.filter(administrator_user__isnull=False)
     else:
         queryset = queryset.objects.none()
@@ -50,11 +37,32 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     serializer_class = UsersSerializer
     filterset_fields = []
-    ordering = ['-pk', 'name']
-    search_fields = ['name']
+    ordering = ['-pk', 'name']  ## по умолчанию
+    ordering_fields = ['pk', 'name', 'organization']  ##по каким полям можно сортировать
+    search_fields = ['name', 'organization__name']
+    permission_classes = [IsAuthenticated]  # Требует аутентификации для всех действий
+
+    # Для действий, которые должны быть доступны без аутентификации:
+    def get_permissions(self):
+        if self.action in ['register_user']:  # Список открытых действий
+            return []
+        return [IsAuthenticated()]
 
     def get_queryset(self):
-        queryset = User.objects.all()
+        queryset = (User.objects.all().select_related('organization')
+        .prefetch_related(
+            'tutor_user',
+            'observed_user',
+            'administrator_user'
+        ).annotate(
+            role_annotated=Case(
+                When(tutor_user__isnull=False, then=Value(Roles.TUTOR.value)),
+                When(observed_user__isnull=False, then=Value(Roles.OBSERVED.value)),
+                When(administrator_user__isnull=False, then=Value(Roles.ADMINISTRATOR.value)),
+                default=Value(Roles.UNROLED.value),
+                output_field=CharField()
+            )
+        ))
         return queryset
 
     @action(detail=True, methods=['DELETE'])
@@ -129,7 +137,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             if serializer.validated_data.get('organization', False):
                 user.organization = Organization.objects.get(id=serializer.validated_data['organization'])
 
-            #Проверка и сохранение изображения
+            # Проверка и сохранение изображения
             image_url = saving_image(serializer, 'photo')
 
             if image_url:
@@ -149,11 +157,11 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             ):
                 role_code = serializer.validated_data['role']['code']
                 # определяем роль пользователя
-                if role_code == 'tutor':
+                if role_code == Roles.TUTOR.value:
                     Tutor.objects.get_or_create(user=user)
-                elif role_code == 'administrator':
+                elif role_code == Roles.ADMINISTRATOR.value:
                     Administrator.objects.get_or_create(user=user)
-                elif role_code == 'observed':
+                elif role_code == Roles.OBSERVED.value:
                     tutor = User.objects.get(id=serializer.validated_data['role']['tutor_id'])
                     defaults = {
                         'tutor': tutor,
@@ -162,7 +170,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                     Observed.objects.update_or_create(user=user, defaults=defaults)
 
             if (
-                    not old_role_name == 'no role'
+                    not old_role_name == Roles.UNROLED.value
                     and has_required_keys
                     and serializer.validated_data['role']['code'] != old_role_name
             ):
@@ -205,11 +213,18 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
         if user:
             serializer = ChangePasswordAdminSerializer(data=request.data)
             if serializer.is_valid():
-                user.set_password(serializer.validated_data['new_password'])
-                user.save()
-                return JsonResponse({'success': True, 'result': UsersSerializer(user).data},
-                                    status=status.HTTP_200_OK)
+                _, role_user = search_role(user)
+                if not role_user == Roles.ADMINISTRATOR.value:
+                    user.set_password(serializer.validated_data['new_password'])
+                    user.save()
+                    return JsonResponse({'success': True, 'result': UsersSerializer(user).data},
+                                        status=status.HTTP_200_OK)
+                else:
+                    return JsonResponse({'success': False, 'errors': 'Запрет на смену пароля администратору'})
             return JsonResponse({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return JsonResponse({'success': False, 'errors': 'Пользователь не найден'},
+                                status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['POST'])
     def register_user(self, request):
@@ -232,7 +247,6 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
 
     @action(methods=['GET'], detail=False)
     def get_tutors(self, request):
-        # tutors = Tutor.objects.all() #TODO: Тут было исправлено
         tutors = User.objects.exclude(id__in=Observed.objects.values_list('user_id', flat=True))
         return JsonResponse({'success': True, 'result': AllTutorsSerializer(tutors, many=True).data})
 

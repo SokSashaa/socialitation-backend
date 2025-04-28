@@ -2,14 +2,17 @@ from django.db import transaction
 from django.db.models import Q
 from rest_framework import serializers
 
+from socialize_main.constants.roles import Roles
 from socialize_main.models import Tutor, User, GamesObserved, TestObservered, Observed, Administrator
 from socialize_main.serializers.games import SingleGameSerializer
+from socialize_main.serializers.organizations import CompactOrganizationSerializer
 from socialize_main.serializers.tests import TestObsSerializer
 
 
 class UsersSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField(method_name='get_role')
     address = serializers.SerializerMethodField(method_name='get_address')
+    organization = CompactOrganizationSerializer()
 
     def get_address(self, obj):
         if obj.observed_user.count() > 0:
@@ -17,14 +20,35 @@ class UsersSerializer(serializers.ModelSerializer):
         return  ''
 
     def get_role(self, obj):
-        if obj.tutor_user.count() > 0:
-            return "tutor"
-        elif obj.observed_user.count() > 0:
-            return 'observed'
-        elif obj.administrator_user.count() > 0:
-            return 'administrator'
-        else:
-            return 'unroled user'
+        if hasattr(obj, 'role_annotated'):
+            return obj.role_annotated
+
+            # Fallback для случая без аннотаций
+        if getattr(obj, '_prefetched_tutor', None) or obj.tutor_user.exists():
+            return Roles.TUTOR.value
+        elif getattr(obj, '_prefetched_observed', None) or obj.observed_user.exists():
+            return Roles.OBSERVED.value
+        elif getattr(obj, '_prefetched_admin', None) or obj.administrator_user.exists():
+            return Roles.ADMINISTRATOR.value
+        return Roles.UNROLED.value
+
+    # def get_role(self, obj):
+    #     if obj.tutor_user.count() > 0:
+    #         return Roles.TUTOR.value
+    #     elif obj.observed_user.count() > 0:
+    #         return Roles.OBSERVED.value
+    #     elif obj.administrator_user.count() > 0:
+    #         return Roles.ADMINISTRATOR.value
+    #     else:
+    #         return Roles.UNROLED.value
+
+    # def get_organization(self,obj):
+    #     if obj.organization:
+    #         return {
+    #             'id': obj.organization.id,
+    #             'name': obj.organization.name
+    #         }
+    #     return None
 
     class Meta:
         model = User
@@ -86,8 +110,9 @@ class UserRegSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     birthday = serializers.DateField()
     role = serializers.JSONField(default={})
-    photo = serializers.CharField()
+    photo = serializers.CharField(allow_blank=True, allow_null=True)
     address = serializers.CharField(allow_blank=True)
+    phone_number = serializers.CharField()
 
     class Meta:
         model = User
@@ -117,14 +142,14 @@ class UserRegSerializer(serializers.ModelSerializer):
             if created:
                 user.set_password(validated_data['password'])
                 user.save()
-                if validated_data['role'].get('code', '') == 'tutor':
+                if validated_data['role'].get('code', '') == Roles.TUTOR.value:
                     tutor = Tutor.objects.get_or_create(
                         user=user),
-                elif validated_data['role'].get('code', '') == 'observed':
+                elif validated_data['role'].get('code', '') == Roles.OBSERVED.value:
                     observed = Observed.objects.get_or_create(user=user, tutor=User.objects.get(
                         pk=validated_data['role']['tutor_id']),
                                                               address=validated_data['address'])
-                elif validated_data['role'].get('code', '') == 'administrator':
+                elif validated_data['role'].get('code', '') == Roles.ADMINISTRATOR.value:
                     administrator = Administrator.objects.get_or_create(
                         user=user)
             return user, created
