@@ -17,3 +17,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
         instance.phone_number = validated_data.get("phone_number", instance.phone_number)
         instance.save()
         return instance
+
+class CompactOrganizationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organization
+        fields = ['id','name']
