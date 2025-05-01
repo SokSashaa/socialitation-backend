@@ -3,16 +3,21 @@ from socialize_main.models import Tutor, Administrator, Observed
 
 
 def search_role(user):
+    if hasattr(user, '_cached_role'):
+        return getattr(user, '_cached_role_obj'), getattr(user, '_cached_role')
+
     roles = [
         (Roles.TUTOR.value, Tutor),
         (Roles.OBSERVED.value, Observed),
         (Roles.ADMINISTRATOR.value, Administrator),
     ]
 
-    for old_role_name, model in roles:
+    for role_name, model in roles:
         try:
-            old_role_obj = model.objects.get(user=user)
-            return old_role_obj, old_role_name
+            role_obj = model.objects.get(user=user)
+            setattr(user, '_cached_role', role_name)
+            setattr(user, '_cached_role_obj', role_obj)
+            return role_obj, role_name
         except model.DoesNotExist:
             pass
 
