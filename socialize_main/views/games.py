@@ -11,9 +11,12 @@ from django.urls import reverse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 
 from socialize_main.constants.file_const import ZIP_FILE_FORMAT
+from socialize_main.constants.roles import Roles
 from socialize_main.models import User, Games, GamesObserved
+from socialize_main.permissions.role_permission import RolePermission
 from socialize_main.serializers.games import GameSerializer, AppointGameSerializer, CreateGameSerializer, \
     UpdateGameSerializer
 from socialize_main.utils.deleteImage import delete_image
@@ -94,7 +97,13 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     ordering = ['-pk', 'name']  # TODO ЗАЛИТЬ
     search_fields = ['name']
+    permission_classes = [IsAuthenticated]
     queryset = Games.objects.all()
+
+    def get_permissions(self):
+        if self.action in ['get_obs_games']:
+            return [IsAuthenticated()]
+        return [RolePermission(Roles.ADMINISTRATOR.value)]
 
     @action(methods=['POST'], detail=False)
     def upload(self, request):

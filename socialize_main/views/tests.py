@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from django_filters.rest_framework import DjangoFilterBackend
-
+from rest_framework.permissions import IsAuthenticated
 
 from socialize_main.models import Tutor, Tests, TestQuestions, Answers, TestObservered, User, TestResult, ObservedAnswer
 from socialize_main.serializers.tests import GetUserTestsSerializer, GetAnswersSerializer, TestsSerializer, \
@@ -15,6 +15,10 @@ class TestsView(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     ordering = ['-created_at']
     search_fields = ['title']
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+
 
     def get_queryset(self):
         try:

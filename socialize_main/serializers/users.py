@@ -1,4 +1,6 @@
-from django.db import transaction
+from pprint import pprint
+
+from django.db import transaction, connection
 from django.db.models import Q
 from rest_framework import serializers
 
@@ -15,40 +17,24 @@ class UsersSerializer(serializers.ModelSerializer):
     organization = CompactOrganizationSerializer()
 
     def get_address(self, obj):
-        if obj.observed_user.count() > 0:
-            return obj.observed_user.first().address
-        return  ''
+        #_prefetched_observed из querySet
+        if hasattr(obj, '_prefetched_observed') and obj._prefetched_observed: #Есть ли атрибут и не пуст ли массив
+            return obj._prefetched_observed[0].address #Всегда хранится массив из 1 элемента
+        return ''
+
 
     def get_role(self, obj):
         if hasattr(obj, 'role_annotated'):
             return obj.role_annotated
 
             # Fallback для случая без аннотаций
-        if getattr(obj, '_prefetched_tutor', None) or obj.tutor_user.exists():
+        if hasattr(obj, '_prefetched_tutor') and obj._prefetched_tutor:
             return Roles.TUTOR.value
-        elif getattr(obj, '_prefetched_observed', None) or obj.observed_user.exists():
+        if hasattr(obj, '_prefetched_observed') and obj._prefetched_observed:
             return Roles.OBSERVED.value
-        elif getattr(obj, '_prefetched_admin', None) or obj.administrator_user.exists():
+        if hasattr(obj, '_prefetched_admin') and obj._prefetched_admin:
             return Roles.ADMINISTRATOR.value
         return Roles.UNROLED.value
-
-    # def get_role(self, obj):
-    #     if obj.tutor_user.count() > 0:
-    #         return Roles.TUTOR.value
-    #     elif obj.observed_user.count() > 0:
-    #         return Roles.OBSERVED.value
-    #     elif obj.administrator_user.count() > 0:
-    #         return Roles.ADMINISTRATOR.value
-    #     else:
-    #         return Roles.UNROLED.value
-
-    # def get_organization(self,obj):
-    #     if obj.organization:
-    #         return {
-    #             'id': obj.organization.id,
-    #             'name': obj.organization.name
-    #         }
-    #     return None
 
     class Meta:
         model = User

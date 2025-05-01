@@ -1,5 +1,5 @@
-from django.db import IntegrityError, connection
-from django.db.models import When, Case, Value, CharField
+from django.db import IntegrityError
+from django.db.models import When, Case, Value, CharField, Prefetch
 from django.http import JsonResponse
 from django_filters import rest_framework as dj_filters
 from django_filters.rest_framework import DjangoFilterBackend
@@ -9,6 +9,8 @@ from rest_framework.permissions import IsAuthenticated
 
 from socialize_main.constants.roles import Roles
 from socialize_main.models import User, Observed, Tutor, Administrator, Organization
+from socialize_main.permissions.change_user_info import ChangeUserInfoPermission
+from socialize_main.permissions.role_permission import RolePermission
 from socialize_main.serializers.users import UserRegSerializer, UsersSerializer, ObservedSerializer, \
     ChangeUserInfoSerializer, ChangePasswordSerializer, AppointObservedSerializer, \
     ChangePasswordAdminSerializer, AllTutorsSerializer
@@ -40,20 +42,29 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     ordering = ['-pk', 'name']  ## по умолчанию
     ordering_fields = ['pk', 'name', 'organization']  ##по каким полям можно сортировать
     search_fields = ['name', 'organization__name']
-    permission_classes = [IsAuthenticated]  # Требует аутентификации для всех действий
+    permission_classes = [IsAuthenticated]  # по умолчанию, запасной вариант, если не указали в get_permissions
 
     # Для действий, которые должны быть доступны без аутентификации:
     def get_permissions(self):
         if self.action in ['register_user']:  # Список открытых действий
             return []
-        return [IsAuthenticated()]
+        if self.action in ['me', 'change_password']:
+            return [IsAuthenticated()]
+        if self.action in ['list', 'delete_user', 'get_tutors']:  ##list - это /users/
+            return [RolePermission([Roles.ADMINISTRATOR.value])]
+        if self.action in ['change_user_info']:
+            return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value]), ChangeUserInfoPermission()]
+        return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
 
     def get_queryset(self):
-        queryset = (User.objects.all().select_related('organization')
-        .prefetch_related(
-            'tutor_user',
-            'observed_user',
-            'administrator_user'
+        queryset = User.objects.select_related('organization').prefetch_related(
+            Prefetch('tutor_user', queryset=Tutor.objects.only('id', 'user_id'), to_attr='_prefetched_tutor'),
+            Prefetch('observed_user',
+                     queryset=Observed.objects.order_by('id').only('id', 'user_id', 'tutor_id', 'address'),
+                     to_attr='_prefetched_observed'),
+            Prefetch('administrator_user',
+                     queryset=Administrator.objects.only('id', 'user_id'),
+                     to_attr='_prefetched_admin')
         ).annotate(
             role_annotated=Case(
                 When(tutor_user__isnull=False, then=Value(Roles.TUTOR.value)),
@@ -62,7 +73,29 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 default=Value(Roles.UNROLED.value),
                 output_field=CharField()
             )
-        ))
+        )
+        # pprint(vars(self.request.user._wrapped))
+        # print(len(connection.queries))
+        # print(connection.queries)
+
+        if self.action == 'retrieve':
+            # Проверка на то, что запрос на своего наблюдаемого
+            cur_user = self.request.user
+            requested_user_id = self.kwargs.get('pk')
+
+            if hasattr(cur_user, 'role'):
+                role = cur_user.role
+            else:
+                _, role = search_role(cur_user)
+
+            if role == Roles.TUTOR.value:  ##'retrieve' - это /users/:idUser
+                # print('query')
+                # pprint(vars(queryset))
+                is_observed = queryset.filter(id=requested_user_id, observed_user__tutor=cur_user.id).exists()
+
+                if not is_observed:
+                    queryset = queryset.none()
+
         return queryset
 
     @action(detail=True, methods=['DELETE'])
@@ -82,7 +115,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     def me(self, request):
         return JsonResponse({"success": True, "result": UsersSerializer(request.user).data}, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['GET'])  # TODO ЗАЛИТЬ
+    @action(detail=False, methods=['GET'])
     def get_observeds(self, request):
         data = request.query_params
         if data.get('text', False):

@@ -2,8 +2,11 @@ from django.http import JsonResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 
+from socialize_main.constants.roles import Roles
 from socialize_main.models import Organization
+from socialize_main.permissions.role_permission import RolePermission
 from socialize_main.serializers.organizations import OrganizationSerializer
 
 
@@ -11,7 +14,11 @@ class OrganizationsView(viewsets.ModelViewSet):
     serializer_class = OrganizationSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     ordering = ['-pk']
-    search_fields = ['name','site']
+    search_fields = ['name', 'site']
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        return [RolePermission([Roles.ADMINISTRATOR.value])]
 
     def get_queryset(self):
         queryset = Organization.objects.all()
