@@ -162,6 +162,12 @@ REST_FRAMEWORK = {
     ]
 }
 
+CSRF_COOKIE_SECURE = True  # Куки CSRF только через HTTPS
+SESSION_COOKIE_SECURE = True  # Сессионные куки только через HTTPS
+
+CSRF_COOKIE_SAMESITE = 'Lax'  #При переходе по ссылкам (GET, HEAD, OPTIONS).
+SESSION_COOKIE_SAMESITE = 'Lax'  # Аналогично для сессий
+
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
