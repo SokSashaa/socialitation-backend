@@ -46,9 +46,9 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
 
     # Для действий, которые должны быть доступны без аутентификации:
     def get_permissions(self):
-        if self.action in ['register_user']:  # Список открытых действий
+        if self.action in ['register_user','me']:  # Список открытых действий
             return []
-        if self.action in ['me', 'change_password']:
+        if self.action in ['change_password']:
             return [IsAuthenticated()]
         if self.action in ['list', 'delete_user', 'get_tutors']:  ##list - это /users/
             return [RolePermission([Roles.ADMINISTRATOR.value])]
@@ -139,9 +139,8 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['GET'])
     def get_observeds_by_tutor(self, request, pk):
         try:
-            tutor = User.objects.get(pk=pk)
             observeds = list(
-                Observed.objects.filter(tutor=tutor).values_list('user__pk', flat=True))  # TODO: Тут было исправлено
+                Observed.objects.filter(tutor_id=pk).values_list('user__pk', flat=True))  # TODO: Тут было исправлено
             users = User.objects.filter(pk__in=observeds)
             return JsonResponse({'success': True, 'result': ObservedSerializer(users, many=True).data},
                                 status=status.HTTP_200_OK)
@@ -150,7 +149,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
         except ValueError:
             return JsonResponse({'success': False, 'error': 'Неверный параметр'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return JsonResponse({'success': False, 'error': e}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'success': False, 'error': e.__str__()}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['POST'])
     def change_user_info(self, request, pk):

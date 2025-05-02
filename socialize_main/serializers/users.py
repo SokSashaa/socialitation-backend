@@ -1,5 +1,3 @@
-from pprint import pprint
-
 from django.db import transaction, connection
 from django.db.models import Q
 from rest_framework import serializers
@@ -9,6 +7,7 @@ from socialize_main.models import Tutor, User, GamesObserved, TestObservered, Ob
 from socialize_main.serializers.games import SingleGameSerializer
 from socialize_main.serializers.organizations import CompactOrganizationSerializer
 from socialize_main.serializers.tests import TestObsSerializer
+from socialize_main.utils.search_role import search_role
 
 
 class UsersSerializer(serializers.ModelSerializer):
@@ -17,11 +16,10 @@ class UsersSerializer(serializers.ModelSerializer):
     organization = CompactOrganizationSerializer()
 
     def get_address(self, obj):
-        #_prefetched_observed из querySet
-        if hasattr(obj, '_prefetched_observed') and obj._prefetched_observed: #Есть ли атрибут и не пуст ли массив
-            return obj._prefetched_observed[0].address #Всегда хранится массив из 1 элемента
+        # _prefetched_observed из querySet
+        if hasattr(obj, '_prefetched_observed') and obj._prefetched_observed:  # Есть ли атрибут и не пуст ли массив
+            return obj._prefetched_observed[0].address  # Всегда хранится массив из 1 элемента
         return ''
-
 
     def get_role(self, obj):
         if hasattr(obj, 'role_annotated'):
@@ -34,7 +32,8 @@ class UsersSerializer(serializers.ModelSerializer):
             return Roles.OBSERVED.value
         if hasattr(obj, '_prefetched_admin') and obj._prefetched_admin:
             return Roles.ADMINISTRATOR.value
-        return Roles.UNROLED.value
+        _, role = search_role(obj)
+        return role
 
     class Meta:
         model = User
@@ -50,15 +49,23 @@ class ObservedSerializer(serializers.ModelSerializer):
     games = serializers.SerializerMethodField(method_name='get_games')
     address = serializers.SerializerMethodField(method_name='get_address')
 
+    def get_observed_user(self, obj):
+        if not hasattr(obj, '_cached_observed_user'):
+            obj._cached_observed_user = obj.observed_user.first()
+        return obj._cached_observed_user
+
     def get_address(self, obj):
-        return obj.observed_user.first().address
+        observed_user = self.get_observed_user(obj)
+        return observed_user.address
 
     def get_games(self, obj):
-        games = GamesObserved.objects.filter(observed=obj.observed_user.first())
+        observed_user = self.get_observed_user(obj)
+        games = GamesObserved.objects.filter(observed=observed_user)
         return SingleGameSerializer(games, many=True).data
 
     def get_tests(self, obj):
-        tests = TestObservered.objects.filter(observed=obj.observed_user.first())
+        observed_user = self.get_observed_user(obj)
+        tests = TestObservered.objects.filter(observed=observed_user)
         return TestObsSerializer(tests.all(), many=True).data
 
     def get_role(self, obj):
