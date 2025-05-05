@@ -19,6 +19,9 @@ class UsersSerializer(serializers.ModelSerializer):
         # _prefetched_observed из querySet
         if hasattr(obj, '_prefetched_observed') and obj._prefetched_observed:  # Есть ли атрибут и не пуст ли массив
             return obj._prefetched_observed[0].address  # Всегда хранится массив из 1 элемента
+        else:
+            if obj.observed_user.count() > 0:
+                return obj.observed_user.first().address
         return ''
 
     def get_role(self, obj):

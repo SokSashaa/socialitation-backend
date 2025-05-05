@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from socialize_main.constants.roles import Roles
 from socialize_main.models import User, Observed, Tutor, Administrator, Organization
-from socialize_main.permissions.change_user_info import ChangeUserInfoPermission
+from socialize_main.permissions.user_access_control_permission import UserAccessControlPermission
 from socialize_main.permissions.role_permission import RolePermission
 from socialize_main.serializers.users import UserRegSerializer, UsersSerializer, ObservedSerializer, \
     ChangeUserInfoSerializer, ChangePasswordSerializer, AppointObservedSerializer, \
@@ -46,14 +46,14 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
 
     # Для действий, которые должны быть доступны без аутентификации:
     def get_permissions(self):
-        if self.action in ['register_user','me']:  # Список открытых действий
+        if self.action in ['register_user']:  # Список открытых действий
             return []
-        if self.action in ['change_password']:
+        if self.action in ['change_password','me']:
             return [IsAuthenticated()]
         if self.action in ['list', 'delete_user', 'get_tutors']:  ##list - это /users/
             return [RolePermission([Roles.ADMINISTRATOR.value])]
-        if self.action in ['change_user_info']:
-            return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value]), ChangeUserInfoPermission()]
+        if self.action in ['change_user_info', 'get_tutor_by_observed']:
+            return [UserAccessControlPermission()]
         return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
 
     def get_queryset(self):
@@ -74,9 +74,6 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 output_field=CharField()
             )
         )
-        # pprint(vars(self.request.user._wrapped))
-        # print(len(connection.queries))
-        # print(connection.queries)
 
         if self.action == 'retrieve':
             # Проверка на то, что запрос на своего наблюдаемого
@@ -89,8 +86,6 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 _, role = search_role(cur_user)
 
             if role == Roles.TUTOR.value:  ##'retrieve' - это /users/:idUser
-                # print('query')
-                # pprint(vars(queryset))
                 is_observed = queryset.filter(id=requested_user_id, observed_user__tutor=cur_user.id).exists()
 
                 if not is_observed:

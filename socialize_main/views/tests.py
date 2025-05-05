@@ -4,7 +4,11 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 
+from socialize_main.constants.roles import Roles
 from socialize_main.models import Tests, TestQuestions, Answers, TestObservered, User, TestResult, ObservedAnswer
+from socialize_main.permissions.check_attached_observed_permission import CheckAttachedObservedPermission
+from socialize_main.permissions.role_permission import RolePermission
+from socialize_main.permissions.user_access_control_permission import UserAccessControlPermission
 from socialize_main.serializers.tests import GetUserTestsSerializer, GetAnswersSerializer, TestsSerializer, \
     UserTestsSerializer, TestSerializer, AppointTestSerializer, SingleTestSerializer, ExistingTestSerializer, \
     CreateTestSerializer, SendAnswersSerializer
@@ -18,7 +22,13 @@ class TestsView(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        return [IsAuthenticated()]
+        if self.action in ['get_single_test', 'send_answers']:  # get_user_tests
+            return [IsAuthenticated()]
+        if self.action in ['get_user_tests']:
+            return [UserAccessControlPermission()]
+        if self.action in ['get_answers']:
+            return [CheckAttachedObservedPermission()]
+        return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
 
     def get_queryset(self):
         try:
@@ -27,14 +37,14 @@ class TestsView(viewsets.ModelViewSet):
             queryset = Tests.objects.none()
         return queryset
 
-
     @action(methods=['GET'], detail=True)
     def get_single_test(self, request, pk):
         try:
             test = Tests.objects.get(pk=pk)
             return JsonResponse({'success': True, 'result': SingleTestSerializer(test).data}, status=status.HTTP_200_OK)
         except Tests.DoesNotExist:
-            return JsonResponse({'success': False, 'errors': ['Не удалось найти тест']}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'success': False, 'errors': ['Не удалось найти тест']},
+                                status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['POST'], detail=False, serializer_class=CreateTestSerializer)
     def create_test(self, request):
@@ -51,7 +61,8 @@ class TestsView(viewsets.ModelViewSet):
         if created:
             return JsonResponse({'sucsess': True, 'result': SingleTestSerializer(test).data}, status=status.HTTP_200_OK)
         else:
-            return JsonResponse({'success': False, 'errors': ['Тест с таким заголовком уже существует']}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'success': False, 'errors': ['Тест с таким заголовком уже существует']},
+                                status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['POST'], detail=True, serializer_class=ExistingTestSerializer)
     def create_questions(self, request, pk):
@@ -100,18 +111,20 @@ class TestsView(viewsets.ModelViewSet):
             for unlink_user in serializer.validated_data['unlink']:
                 user = User.objects.get(pk=unlink_user)
                 try:
-                    TestObservered.objects.get(test=test, observed=user.observed_user.first()).delete() # TODO ЗАЛИТЬ
+                    TestObservered.objects.get(test=test, observed=user.observed_user.first()).delete()  # TODO ЗАЛИТЬ
                 except TestObservered.DoesNotExist:
                     continue
             if not response:
                 return JsonResponse({'success': True}, status=status.HTTP_200_OK)
             else:
-                return JsonResponse({'success': True, 'message': f'Пользователям: {response} тест уже назначен'}, status=status.HTTP_200_OK)
+                return JsonResponse({'success': True, 'message': f'Пользователям: {response} тест уже назначен'},
+                                    status=status.HTTP_200_OK)
         except Tests.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Тест не найден']}, status=status.HTTP_400_BAD_REQUEST)
         except Tests.MultipleObjectsReturned:
             return JsonResponse({'success': False,
-                                 'errors': [f'Найдено несколько тестов по id: {serializer.validated_data["test_id"]}']}, status=status.HTTP_400_BAD_REQUEST)
+                                 'errors': [f'Найдено несколько тестов по id: {serializer.validated_data["test_id"]}']},
+                                status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['GET'], detail=False)
     def get_user_tests(self, request):
@@ -121,12 +134,15 @@ class TestsView(viewsets.ModelViewSet):
         try:
             user = User.objects.get(pk=serializer.validated_data['user_id'])
             context = {'request': request, 'user_id': serializer.validated_data['user_id']}
-            return JsonResponse({'success': True, 'result': UserTestsSerializer(user, context=context).data}, status=status.HTTP_200_OK)
+            return JsonResponse({'success': True, 'result': UserTestsSerializer(user, context=context).data},
+                                status=status.HTTP_200_OK)
         except User.DoesNotExist:
-            return JsonResponse({'success': False, 'errors': ['Пользователь не найден']}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'success': False, 'errors': ['Пользователь не найден']},
+                                status=status.HTTP_400_BAD_REQUEST)
         except User.MultipleObjectsReturned:
             return JsonResponse({'success': False, 'errors': [
-                f'Найдено несколько пользователей по id: {serializer.validated_data["user_id"]}']}, status=status.HTTP_400_BAD_REQUEST)
+                f'Найдено несколько пользователей по id: {serializer.validated_data["user_id"]}']},
+                                status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['POST'], detail=False)
     def send_answers(self, request):
@@ -145,11 +161,13 @@ class TestsView(viewsets.ModelViewSet):
             test_observed.is_passed = True
             test_observed.save()
             test_observed.refresh_from_db()
-            return JsonResponse({'success': True, 'result': TestSerializer(test, context={'request': request}).data}, status=status.HTTP_200_OK)
+            return JsonResponse({'success': True, 'result': TestSerializer(test, context={'request': request}).data},
+                                status=status.HTTP_200_OK)
         except Tests.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Тест не найден']}, status=status.HTTP_400_BAD_REQUEST)
         except User.DoesNotExist:
-            return JsonResponse({'success': False, 'errors': ['Пользователь не найден']}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'success': False, 'errors': ['Пользователь не найден']},
+                                status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['POST'], detail=False)
     def get_answers(self, request):
@@ -159,4 +177,5 @@ class TestsView(viewsets.ModelViewSet):
         test = Tests.objects.get(pk=serializer.validated_data['test_id'])
         user = User.objects.get(pk=serializer.validated_data['user_id'])
         test_result = TestResult.objects.get(test=test, observed=user.observed_user.first())
-        return JsonResponse({'success': True, 'result': TestSerializer(test, context={'request': request}).data}, status=status.HTTP_200_OK)
+        return JsonResponse({'success': True, 'result': TestSerializer(test, context={'request': request}).data},
+                            status=status.HTTP_200_OK)
