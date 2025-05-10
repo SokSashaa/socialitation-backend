@@ -15,7 +15,7 @@ django_extensions < 4
 drf-flex-fields==1.0.0 # раскрытие полей моделей
 django-versatileimagefield==2.2 # для работы с изображениями
 django_celery_results # результаты работы с Celery в админке
-psycopg2==2.9.10 # для работы с PostgreSQL
+psycopg2-binary==2.9.10 # для работы с PostgreSQL
 flower==1.2.0 # для работы с Celery
 requests==2.28.1 # для работы с запросами
 requests_futures == 1.0.0 # для работы с запросами

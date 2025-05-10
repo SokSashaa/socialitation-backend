@@ -8,6 +8,7 @@ from django.core.files.storage import FileSystemStorage
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
@@ -24,6 +25,7 @@ from socialize_main.utils.randomName import random_name
 from socialize_main.utils.savingImage import saving_image
 
 
+@xframe_options_sameorigin
 def game_view(request, game_name):
     template_path = f'games/{game_name}/index.html'  # Предполагаем, что главный файл HTML называется index.html
     return render(request, template_path, {'game_name': game_name})
@@ -137,15 +139,15 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
 
             image_str = saving_image(serializer, 'icon')
 
-            #Формирование ссылки на игру
+            # Формирование ссылки на игру
             game_link = request.build_absolute_uri(reverse('game_view', kwargs={'game_name': directory_name}))
 
             # Создание объекта Games
             game = Games.objects.create(name=game_name,
-                                 description=game_description,
-                                 link=game_link,
-                                 directory_name=directory_name,
-                                 icon=image_str)
+                                        description=game_description,
+                                        link=game_link,
+                                        directory_name=directory_name,
+                                        icon=image_str)
 
             return JsonResponse({'success': True, 'result': GameSerializer(game).data}, status=status.HTTP_200_OK)
 
