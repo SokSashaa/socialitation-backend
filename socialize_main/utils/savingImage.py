@@ -33,7 +33,7 @@ def saving_image(serializer, field):
 
             # Формируем URL для сохраненного изображения
             image_url = os.path.join(settings.MEDIA_URL, 'uploaded_images', image_name)
-            print(image_url)
+
             return image_url
         else:
             return ''

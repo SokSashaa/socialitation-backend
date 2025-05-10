@@ -1,3 +1,12 @@
 db.sqlite3
 media*
 templates/games/*
+
+.idea
+venv
+
+migrations
+*/migrations
+migrations/*
+
+.env
