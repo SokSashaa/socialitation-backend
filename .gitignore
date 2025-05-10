@@ -5,6 +5,12 @@ templates/games/*
 .idea
 venv
 
+/shelf/
+/workspace.xml
+/httpRequests/
+/dataSources/
+/dataSources.local.xml
+
 migrations
 */migrations
 migrations/*
