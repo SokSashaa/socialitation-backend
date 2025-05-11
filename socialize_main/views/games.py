@@ -37,63 +37,6 @@ class UploadArchiveForm(forms.Form):
     game_description = forms.CharField()
     game_icon = forms.FileField()
 
-
-# @csrf_exempt  ##TODO убрать декоратор когда закончится тестирование
-# def upload_archive(request):
-#     if request.method == 'POST':
-#         form = UploadArchiveForm(request.POST, request.FILES)
-#         if form.is_valid():
-#             archive_file = form.cleaned_data['archive_file']
-#             game_name = form.cleaned_data['game_title'].strip().replace(' ', '_')
-#             game_description = form.cleaned_data['game_description']
-#             game_icon = form.cleaned_data['game_icon']
-#             fs = FileSystemStorage(location='templates/games/')
-#             archive_path = ''
-#             directory_name = ''
-#
-#             try:
-#                 if archive_file.size > 10 * 1024 * 1024:
-#                     raise ValueError('ZIP файл больше 10 МБ')
-#
-#                 filename = fs.save(archive_file.name, archive_file)
-#
-#                 # Распаковка архива
-#                 archive_path = os.path.join(fs.location, filename)  # обработку ошибок архива
-#                 with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-#                     files_in_archive = zip_ref.namelist()
-#                     if 'index.html' not in files_in_archive:
-#                         raise ValueError('Отсутствует index.html файл')
-#
-#                     directory_name = f"{game_name}_{random_name()}"
-#                     zip_ref.extractall(os.path.join(fs.location, directory_name))
-#
-#                 # Создание объекта Games
-#                 Games.objects.create(name=game_name, description=game_description,
-#                                      link=f'http://127.0.0.1:8000/api/game/{directory_name}',
-#                                      directory_name=directory_name, icon=game_icon)  # TODO: исправить ссылку
-#                 return redirect('games_list')  # Редирект на список игр или другое представление
-#             except zipfile.BadZipFile:
-#                 return JsonResponse({'success': False, 'error': 'Архив поврежден или некорректен'},
-#                                     status=status.HTTP_400_BAD_REQUEST)
-#             except Exception as e:
-#                 return JsonResponse({'success': False, 'error': str(e)}, )
-#             finally:
-#                 if archive_path and os.path.exists(archive_path):
-#                     try:
-#                         os.remove(archive_path)
-#                     except Exception as e:
-#                         print(f"Ошибка при удалении архива: {e}")
-#     else:
-#         form = UploadArchiveForm()
-#     return render(request, 'upload_archive.html', {'form': form})  # скорее всего выводить просто ошибку
-#
-
-# def games_list(request):
-#     games_dir = os.path.join(settings.BASE_DIR, 'templates/games')
-#     games = [d for d in os.listdir(games_dir) if os.path.isdir(os.path.join(games_dir, d))]
-#     return render(request, 'games_list.html', {'games': games})
-
-
 class GamesView(viewsets.ReadOnlyModelViewSet):
     serializer_class = GameSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
