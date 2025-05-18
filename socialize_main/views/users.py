@@ -5,6 +5,7 @@ from django_filters import rest_framework as dj_filters
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 
 from socialize_main.constants.roles import Roles
@@ -17,6 +18,8 @@ from socialize_main.serializers.users import UserRegSerializer, UsersSerializer,
 from socialize_main.utils.deleteImage import delete_image
 from socialize_main.utils.savingImage import saving_image
 from socialize_main.utils.search_role import search_role
+from socialize_main.utils.users.get_integrity_error_user import get_integrity_error_user
+from socialize_main.utils.users.process_user_roles import process_user_roles
 
 
 def filter_by_role(queryset, name, value):
@@ -43,16 +46,15 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['pk', 'name', 'organization']  ##по каким полям можно сортировать
     search_fields = ['name', 'organization__name']
     permission_classes = [IsAuthenticated]  # по умолчанию, запасной вариант, если не указали в get_permissions
+    pagination_class = LimitOffsetPagination
 
     # Для действий, которые должны быть доступны без аутентификации:
     def get_permissions(self):
-        if self.action in ['register_user']:  # Список открытых действий
-            return []
-        if self.action in ['change_password','me']:
+        if self.action in ['change_password', 'me']:
             return [IsAuthenticated()]
-        if self.action in ['list', 'delete_user', 'get_tutors']:  ##list - это /users/
+        if self.action in ['list', 'delete_user', 'get_tutors', 'register_user']:  ##list - это /users/
             return [RolePermission([Roles.ADMINISTRATOR.value])]
-        if self.action in ['change_user_info', 'get_tutor_by_observed']:
+        if self.action in ['change_user_info', 'get_tutor_by_observed', 'delete_avatar']:
             return [UserAccessControlPermission()]
         return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
 
@@ -153,16 +155,18 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             return JsonResponse({'success': False, 'errors': serializer.errors})
         try:
             user = User.objects.get(pk=pk)
-            user.name = serializer.validated_data['name']
-            user.second_name = serializer.validated_data['second_name']
-            user.patronymic = serializer.validated_data['patronymic']
-            user.email = serializer.validated_data['email']
-            user.date_of_birth = serializer.validated_data['birthday']
-            user.phone_number = serializer.validated_data['phone_number']
-            old_role_obj, old_role_name = search_role(user)
+
+            user_fields = ['name', 'second_name', 'patronymic', 'email', 'birthday', 'phone_number']
+
+            for field in user_fields:
+                setattr(user, field, serializer.validated_data[field])
 
             if serializer.validated_data.get('organization', False):
-                user.organization = Organization.objects.get(id=serializer.validated_data['organization'])
+                organization_id = serializer.validated_data['organization']
+                user.organization = Organization.objects.get(id=organization_id)
+
+            #Процесс смены роли
+            process_user_roles(user, serializer)
 
             # Проверка и сохранение изображения
             image_url = saving_image(serializer, 'photo')
@@ -171,42 +175,11 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 delete_image(user.photo)
                 user.photo = image_url
 
-                # Проверка на существование роли и определенных полей
-            has_required_keys = (
-                    serializer.validated_data.get('role', False) and
-                    'code' in serializer.validated_data['role'] and
-                    'tutor_id' in serializer.validated_data['role']
-            )
-
-            if (
-                    has_required_keys
-                    # and serializer.validated_data['role']['code'] != old_role_name
-            ):
-                role_code = serializer.validated_data['role']['code']
-                # определяем роль пользователя
-                if role_code == Roles.TUTOR.value:
-                    Tutor.objects.get_or_create(user=user)
-                elif role_code == Roles.ADMINISTRATOR.value:
-                    Administrator.objects.get_or_create(user=user)
-                elif role_code == Roles.OBSERVED.value:
-                    tutor = User.objects.get(id=serializer.validated_data['role']['tutor_id'])
-                    defaults = {
-                        'tutor': tutor,
-                        'address': serializer.validated_data['address'],
-                    }
-                    Observed.objects.update_or_create(user=user, defaults=defaults)
-
-            if (
-                    not old_role_name == Roles.UNROLED.value
-                    and has_required_keys
-                    and serializer.validated_data['role']['code'] != old_role_name
-            ):
-                # удаляем старую роль пользователя
-                old_role_obj.delete()
             user.save()
+
             return JsonResponse({'success': True, 'result': UsersSerializer(user).data}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
-            return JsonResponse({'success': False, 'errors': ['Такого пользователя не найдено']},
+            return JsonResponse({'success': False, 'errors': 'Такого пользователя не найдено'},
                                 status=status.HTTP_400_BAD_REQUEST)
         except Organization.DoesNotExist:
             return JsonResponse({'success': False, 'errors': 'Такая организация не найдена'},
@@ -220,7 +193,8 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 'error': f'Не найдено обязательное поле: {e}'
             }, status=status.HTTP_400_BAD_REQUEST)
         except IntegrityError as e:
-            return JsonResponse({"error": "Указанная почта уже занята."}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'success': False, "error": get_integrity_error_user(e)},
+                                status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'])
     def change_password(self, request):
@@ -257,20 +231,26 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     def register_user(self, request):
         serializer = UserRegSerializer(data=request.data)
         if serializer.is_valid():
-            user, created = serializer.save()
-            if created:
-                image_str = saving_image(serializer, 'photo')
+            try:
+                user, created = serializer.save()
+                if created:
+                    image_str = saving_image(serializer, 'photo')
 
-                user.photo = image_str
+                    user.photo = image_str
 
-                user.save()
+                    user.save()
 
-                return JsonResponse({'success': True, 'result': UsersSerializer(user).data}, status=status.HTTP_200_OK)
-            else:
-                return JsonResponse(
-                    {'success': False, 'errors': ['Пользователь с таким логином или почтой уже существует']},
-                    status=status.HTTP_400_BAD_REQUEST)
-        return JsonResponse({'success': False, 'errors': serializer.errors})
+                    return JsonResponse({'success': True, 'result': UsersSerializer(user).data},
+                                        status=status.HTTP_200_OK)
+                else:
+                    return JsonResponse(
+                        {'success': False, 'errors': 'Пользователь с таким логином или почтой уже существует'},
+                        status=status.HTTP_400_BAD_REQUEST)
+            except IntegrityError as e:
+                return JsonResponse({'success': False, "errors": get_integrity_error_user(e)},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
+        return JsonResponse({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['GET'], detail=False)
     def get_tutors(self, request):
@@ -309,4 +289,20 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             return JsonResponse({'success': False, 'errors': ['Тьютор не найден']}, status=status.HTTP_400_BAD_REQUEST)
         except Tutor.MultipleObjectsReturned:
             return JsonResponse({'success': False, 'errors': ['Найдено несколько тьюторов']},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['POST'], detail=True)
+    def delete_avatar(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+
+            delete_image(user.photo)
+
+            user.photo = None
+
+            user.save()
+
+            return JsonResponse({'success': True, 'result': UsersSerializer(user).data}, status=status.HTTP_200_OK)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'errors': 'Пользователь не найден'},
                                 status=status.HTTP_400_BAD_REQUEST)

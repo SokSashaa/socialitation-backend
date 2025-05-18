@@ -2,6 +2,8 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin, AbstractUser
 import datetime
 from django.db import models
+from django.db.models import Exists, OuterRef, BooleanField
+from django.db.models.expressions import RawSQL
 
 from socialize_main.managers import CustomUserManager
 
@@ -20,8 +22,8 @@ class Organization(models.Model):
 class User(AbstractUser):
     email = models.CharField(blank=True, null=True, unique=True, max_length=150)
     username = None
-    second_name = models.CharField(blank=True, null=False, max_length=150, default='Иванов')
-    name = models.CharField(blank=True, null=False, max_length=150, default='Иван')
+    second_name = models.CharField(blank=False, null=False, max_length=150)
+    name = models.CharField(blank=False, null=False, max_length=150)
     login = models.CharField(blank=False, null=False, unique=True, max_length=100)
     photo = models.CharField(blank=True, null=True, max_length=500)
     phone_number = models.CharField(blank=False, null=False, max_length=12, unique=True)
@@ -45,6 +47,14 @@ class Observed(models.Model):
     tutor = models.ForeignKey(User, on_delete=models.CASCADE, related_name='observed_tutor')
     address = models.CharField(blank=False, null=False, max_length=150)
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                check=(~models.Q(user=models.F('tutor'))),
+                name="user_and_tutor_cannot_be_the_same"
+            )
+        ]
+
 
 class Administrator(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='administrator_user')
@@ -61,12 +71,13 @@ class TestObservered(models.Model):
     observed = models.ForeignKey(Observed, on_delete=models.CASCADE)
     is_passed = models.BooleanField(default=False)
 
-
-class PointRange(models.Model):
-    test = models.ForeignKey(Tests, on_delete=models.CASCADE, related_name='point_range_test')
-    result = models.IntegerField()
-    high_border = models.IntegerField(blank=False, null=False)
-    low_border = models.IntegerField(blank=False, null=False)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['test', 'observed'],
+                name='primary_unique_test_observed'
+            )
+        ]
 
 
 class TestQuestions(models.Model):
@@ -89,7 +100,6 @@ class Answers(models.Model):
 
 class ObservedAnswer(models.Model):
     test_result = models.ForeignKey(TestResult, on_delete=models.CASCADE, related_name='answers')
-    observed = models.ForeignKey(Observed, on_delete=models.CASCADE)
     answer = models.ForeignKey(Answers, on_delete=models.CASCADE, blank=True, null=True)
 
 
@@ -104,3 +114,11 @@ class Games(models.Model):
 class GamesObserved(models.Model):
     observed = models.ForeignKey(Observed, on_delete=models.CASCADE)
     game = models.ForeignKey(Games, on_delete=models.CASCADE)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['game', 'observed'],
+                name='primary_unique_games_observed'
+            )
+        ]
