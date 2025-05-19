@@ -1,9 +1,8 @@
+import datetime
+
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin, AbstractUser
-import datetime
 from django.db import models
-from django.db.models import Exists, OuterRef, BooleanField
-from django.db.models.expressions import RawSQL
 
 from socialize_main.managers import CustomUserManager
 

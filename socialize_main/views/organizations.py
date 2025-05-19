@@ -15,7 +15,6 @@ class OrganizationsView(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     ordering = ['-pk']
     search_fields = ['name', 'site']
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
         return [RolePermission([Roles.ADMINISTRATOR.value])]

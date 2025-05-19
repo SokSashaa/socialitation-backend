@@ -94,12 +94,12 @@ class ChangeUserInfoSerializer(serializers.Serializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True)
+    old_password = serializers.CharField(required=True, allow_null=False, allow_blank=False, write_only=True)
+    new_password = serializers.CharField(required=True, allow_null=False, allow_blank=False, write_only=True)
 
 
 class ChangePasswordAdminSerializer(serializers.Serializer):
-    new_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, allow_null=False, allow_blank=False, write_only=True)
 
 
 class UserRegSerializer(serializers.ModelSerializer):

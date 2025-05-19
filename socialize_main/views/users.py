@@ -44,9 +44,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     filterset_fields = []
     ordering = ['-pk', 'name']  ## по умолчанию
     ordering_fields = ['pk', 'name', 'organization']  ##по каким полям можно сортировать
-    search_fields = ['name', 'organization__name']
-    permission_classes = [IsAuthenticated]  # по умолчанию, запасной вариант, если не указали в get_permissions
-    pagination_class = LimitOffsetPagination
+    search_fields = ['name', 'second_name', 'login', 'phone_number', 'organization__name']
 
     # Для действий, которые должны быть доступны без аутентификации:
     def get_permissions(self):
