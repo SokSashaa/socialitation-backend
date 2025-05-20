@@ -1,4 +1,6 @@
-from django.db import IntegrityError
+import time
+
+from django.db import IntegrityError, connection
 from django.db.models import When, Case, Value, CharField, Prefetch
 from django.http import JsonResponse
 from django_filters import rest_framework as dj_filters
@@ -55,6 +57,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
         if self.action in ['change_user_info', 'get_tutor_by_observed', 'delete_avatar']:
             return [UserAccessControlPermission()]
         return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
+
 
     def get_queryset(self):
         queryset = User.objects.select_related('organization').prefetch_related(
@@ -135,7 +138,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     def get_observeds_by_tutor(self, request, pk):
         try:
             observeds = list(
-                Observed.objects.filter(tutor_id=pk).values_list('user__pk', flat=True))  # TODO: Тут было исправлено
+                Observed.objects.filter(tutor_id=pk).values_list('user__pk', flat=True))
             users = User.objects.filter(pk__in=observeds)
             return JsonResponse({'success': True, 'result': ObservedSerializer(users, many=True).data},
                                 status=status.HTTP_200_OK)
