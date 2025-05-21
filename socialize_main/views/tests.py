@@ -9,7 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from socialize_main.constants.roles import Roles
 from socialize_main.models import Tests, TestQuestions, Answers, TestObservered, User, TestResult, ObservedAnswer, \
     Observed
-from socialize_main.permissions.check_attached_observed_permission import CheckAttachedObservedPermission
+from socialize_main.permissions.tests.can_view_user_result_test_permission import CanViewUserResultTestPermission
 from socialize_main.permissions.role_permission import RolePermission
 from socialize_main.permissions.user_access_control_permission import UserAccessControlPermission
 from socialize_main.serializers.tests import GetUserTestsSerializer, GetAnswersSerializer, TestsSerializer, \
@@ -22,16 +22,16 @@ class TestsView(viewsets.ModelViewSet):
     serializer_class = TestsSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     ordering = ['-created_at']
+    ordering_fields = ['created_at', 'title', 'id']
     search_fields = ['title']
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.action in ['get_single_test', 'send_answers']:  # get_user_tests
+        if self.action in ['get_single_test', 'send_answers']:
             return [IsAuthenticated()]
         if self.action in ['get_user_tests']:
             return [UserAccessControlPermission()]
         if self.action in ['get_answers']:
-            return [CheckAttachedObservedPermission()]
+            return [CanViewUserResultTestPermission()]
         return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
 
     def get_queryset(self):

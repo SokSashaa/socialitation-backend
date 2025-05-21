@@ -54,10 +54,9 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             return [IsAuthenticated()]
         if self.action in ['list', 'delete_user', 'get_tutors', 'register_user']:  ##list - это /users/
             return [RolePermission([Roles.ADMINISTRATOR.value])]
-        if self.action in ['change_user_info', 'get_tutor_by_observed', 'delete_avatar']:
+        if self.action in ['retrieve','change_user_info', 'get_tutor_by_observed', 'delete_avatar']:
             return [UserAccessControlPermission()]
         return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
-
 
     def get_queryset(self):
         queryset = User.objects.select_related('organization').prefetch_related(
@@ -77,22 +76,6 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 output_field=CharField()
             )
         )
-
-        if self.action == 'retrieve':
-            # Проверка на то, что запрос на своего наблюдаемого
-            cur_user = self.request.user
-            requested_user_id = self.kwargs.get('pk')
-
-            if hasattr(cur_user, 'role'):
-                role = cur_user.role
-            else:
-                _, role = search_role(cur_user)
-
-            if role == Roles.TUTOR.value:  ##'retrieve' - это /users/:idUser
-                is_observed = queryset.filter(id=requested_user_id, observed_user__tutor=cur_user.id).exists()
-
-                if not is_observed:
-                    queryset = queryset.none()
 
         return queryset
 
@@ -162,11 +145,13 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             for field in user_fields:
                 setattr(user, field, serializer.validated_data[field])
 
-            if serializer.validated_data.get('organization', False):
+            user_organization = serializer.validated_data.get('organization', False)
+
+            if user_organization and not user_organization == user.organization: ##TODO: Проверить условие
                 organization_id = serializer.validated_data['organization']
                 user.organization = Organization.objects.get(id=organization_id)
 
-            #Процесс смены роли
+            # Процесс смены роли
             process_user_roles(user, serializer)
 
             # Проверка и сохранение изображения

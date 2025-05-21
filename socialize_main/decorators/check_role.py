@@ -17,8 +17,8 @@ def check_role(permission_function):
         if not hasattr(user,'role'):
             role_obj,role_name = search_role(user)
 
-            request.user.role = role_name
-            request.user.role_obj = role_obj
+            user.role = role_name
+            user.role_obj = role_obj
 
         return permission_function(self, request, view)
 

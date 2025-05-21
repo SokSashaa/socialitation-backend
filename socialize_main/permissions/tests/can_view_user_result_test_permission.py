@@ -8,14 +8,11 @@ from socialize_main.utils.get_role import get_role
 from socialize_main.utils.is_belong_observed_to_tutor import is_belong_observed_to_tutor
 
 
-class CheckAttachedObservedPermission(BasePermission):
+class CanViewUserResultTestPermission(BasePermission):
 
     @check_role
     def has_permission(self, request, view):
         user = request.user
-
-        # if not user.is_authenticated:
-        #     return False
 
         role = get_role(user)
 
@@ -31,7 +28,6 @@ class CheckAttachedObservedPermission(BasePermission):
             return False
 
         if role == Roles.TUTOR.value:
-            # return Observed.objects.filter(tutor=user, user_id=req_user_id).exists()
             return is_belong_observed_to_tutor(user, req_user_id)
 
         if role == Roles.OBSERVED.value:
