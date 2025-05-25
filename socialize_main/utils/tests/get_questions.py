@@ -16,6 +16,6 @@ def get_questions(obj):
                 )
             )
         except TestQuestions.DoesNotExist:
-            return None
+            return []
 
     return questions

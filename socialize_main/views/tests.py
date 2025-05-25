@@ -9,8 +9,8 @@ from rest_framework.permissions import IsAuthenticated
 from socialize_main.constants.roles import Roles
 from socialize_main.models import Tests, TestQuestions, Answers, TestObservered, User, TestResult, ObservedAnswer, \
     Observed
-from socialize_main.permissions.tests.can_view_user_result_test_permission import CanViewUserResultTestPermission
 from socialize_main.permissions.role_permission import RolePermission
+from socialize_main.permissions.tests.can_view_user_result_test_permission import CanViewUserResultTestPermission
 from socialize_main.permissions.user_access_control_permission import UserAccessControlPermission
 from socialize_main.serializers.tests import GetUserTestsSerializer, GetAnswersSerializer, TestsSerializer, \
     UserTestsSerializer, TestSerializer, AppointTestSerializer, SingleTestSerializer, ExistingTestSerializer, \
@@ -229,9 +229,11 @@ class TestsView(viewsets.ModelViewSet):
                     'test_result': test_result,
                 }
 
+
                 return JsonResponse(
-                    {'success': True, 'result': TestSerializer(test, context=tests_contex).data},
-                    status=status.HTTP_200_OK)
+                        {'success': True, 'result': TestSerializer(test, context=tests_contex).data},
+                        status=status.HTTP_200_OK)
+
 
         except Tests.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Тест не найден']}, status=status.HTTP_400_BAD_REQUEST)
@@ -245,7 +247,6 @@ class TestsView(viewsets.ModelViewSet):
 
     @action(methods=['POST'], detail=False)
     def get_answers(self, request):
-
         serializer = GetAnswersSerializer(data=request.data)
 
         if not serializer.is_valid():
@@ -287,6 +288,8 @@ class TestsView(viewsets.ModelViewSet):
 
             return JsonResponse({'success': True, 'result': TestSerializer(test, context=tests_contex).data},
                                 status=status.HTTP_200_OK)
+
+
         except Tests.DoesNotExist:
             return JsonResponse({'success': False, 'errors': 'Тест не найден'}, status=status.HTTP_400_BAD_REQUEST)
         except User.DoesNotExist:

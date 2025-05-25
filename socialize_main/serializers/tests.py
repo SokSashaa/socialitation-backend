@@ -3,6 +3,7 @@ from collections import defaultdict
 from rest_framework import serializers
 
 from socialize_main.models import User, Tests, TestQuestions, Answers, TestObservered, TestResult, ObservedAnswer
+from socialize_main.utils.tests.get_answers import get_answers
 from socialize_main.utils.tests.get_questions import get_questions
 from socialize_main.utils.tests.get_tests_user_in_test_observered import get_tests_user_in_test_observered
 
@@ -104,10 +105,7 @@ class QuestionSerializer(serializers.Serializer):
     answers = serializers.SerializerMethodField()
 
     def get_answers(self, obj):
-        answers = getattr(obj, '_prefetched_answers', None)
-
-        if answers is None:
-            answers = Answers.objects.filter(question=obj)
+        answers = get_answers(obj)
 
         return AnswersSerializer(answers, many=True).data
 
@@ -155,10 +153,7 @@ class TestQuestionSerializer(serializers.ModelSerializer):
         fields = ('id', 'title', 'type', 'answers', 'answer_user')
 
     def get_answers(self, obj):
-        answers = getattr(obj, '_prefetched_answers', None)
-
-        if answers is None:
-            answers = Answers.objects.filter(question=obj)
+        answers = get_answers(obj)
 
         return AnswersSerializer(answers, many=True, read_only=True).data
 

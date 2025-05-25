@@ -12,12 +12,12 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
 
 from socialize_main.constants.file_const import ZIP_FILE_FORMAT
 from socialize_main.constants.roles import Roles
 from socialize_main.models import User, Games, GamesObserved
 from socialize_main.permissions.role_permission import RolePermission
+from socialize_main.permissions.user_access_control_permission import UserAccessControlPermission
 from socialize_main.serializers.games import GameSerializer, AppointGameSerializer, CreateGameSerializer, \
     UpdateGameSerializer
 from socialize_main.utils.deleteImage import delete_image
@@ -40,19 +40,22 @@ class UploadArchiveForm(forms.Form):
 class GamesView(viewsets.ReadOnlyModelViewSet):
     serializer_class = GameSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    ordering = ['-pk', 'name']  # TODO ЗАЛИТЬ
+    ordering = ['-pk', 'name']
+    ordering_fields = ['name','id']
     search_fields = ['name']
-    permission_classes = [IsAuthenticated]
-    queryset = Games.objects.all()
 
     def get_permissions(self):
         if self.action in ['get_obs_games']:
-            return [IsAuthenticated()]
+            return [UserAccessControlPermission()]
         return [RolePermission(Roles.ADMINISTRATOR.value)]
+
+    def get_queryset(self):
+        queryset = Games.objects.all()
+
+        return  queryset
 
     @action(methods=['POST'], detail=False)
     def upload(self, request):
-
         serializer = CreateGameSerializer(data=request.data)
         if not serializer.is_valid():
             return JsonResponse({'success': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
@@ -65,19 +68,12 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
 
             directory_name = f"{game_name}_{random_name()}"
 
-            if archive_file.size > 10 * 1024 * 1024:
-                raise ValueError('ZIP файл больше 10 МБ')
-
             filename = fs.save(f"{directory_name}{ZIP_FILE_FORMAT}", archive_file)
 
             # Распаковка архива
-            archive_path = os.path.join(fs.location, filename)  # обработку ошибок архива
+            archive_path = os.path.join(fs.location, filename)
 
             with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-                files_in_archive = zip_ref.namelist()
-                if 'index.html' not in files_in_archive:
-                    raise ValueError('Отсутствует index.html файл')
-
                 zip_ref.extractall(os.path.join(fs.location, directory_name))
 
             image_str = saving_image(serializer, 'icon')
