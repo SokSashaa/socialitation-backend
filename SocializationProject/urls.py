@@ -41,7 +41,7 @@ urlpatterns = [path('api/admin/', admin.site.urls), path('doc/', schema_view.wit
                path('api/schema/', SpectacularAPIView.as_view(), name='schema-customer'),
                path('api/schema-swagger', SpectacularSwaggerView.as_view(url_name='schema-customer'),
                     name='schema-swagger'),
-               path('api-auth/', include('rest_framework.urls')),
+               path('api/auth', include('rest_framework.urls')),
                ]
 
 urlpatterns += socialize_main.urls.urlpatterns
