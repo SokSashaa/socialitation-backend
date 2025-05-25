@@ -39,9 +39,9 @@ urlpatterns = [path('api/admin/', admin.site.urls), path('doc/', schema_view.wit
                path('api/obtain_token/', TokenObtainPairView.as_view(), name='authuser'),
                path('api/refresh_token/', TokenRefreshView.as_view(), name='refreshtoken'),
                path('api/schema/', SpectacularAPIView.as_view(), name='schema-customer'),
-               path('api/schema-swagger', SpectacularSwaggerView.as_view(url_name='schema-customer'),
+               path('api/schema-swagger/', SpectacularSwaggerView.as_view(url_name='schema-customer'),
                     name='schema-swagger'),
-               path('api/auth', include('rest_framework.urls')),
+               path('api/auth/', include('rest_framework.urls')),
                ]
 
 urlpatterns += socialize_main.urls.urlpatterns
