@@ -76,7 +76,7 @@ class ObservedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'second_name', 'name', 'patronymic', 'role', 'games', 'tests', 'address')
+        fields = ('id', 'email', 'second_name', 'name', 'patronymic', 'role', 'photo','games', 'tests', 'address')
         read_only_fields = ['id']
 
 

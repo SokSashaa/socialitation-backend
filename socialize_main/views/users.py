@@ -1,6 +1,4 @@
-import time
-
-from django.db import IntegrityError, connection
+from django.db import IntegrityError
 from django.db.models import When, Case, Value, CharField, Prefetch
 from django.http import JsonResponse
 from django_filters import rest_framework as dj_filters
@@ -12,8 +10,8 @@ from rest_framework.permissions import IsAuthenticated
 
 from socialize_main.constants.roles import Roles
 from socialize_main.models import User, Observed, Tutor, Administrator, Organization
-from socialize_main.permissions.user_access_control_permission import UserAccessControlPermission
 from socialize_main.permissions.role_permission import RolePermission
+from socialize_main.permissions.user_access_control_permission import UserAccessControlPermission
 from socialize_main.serializers.users import UserRegSerializer, UsersSerializer, ObservedSerializer, \
     ChangeUserInfoSerializer, ChangePasswordSerializer, AppointObservedSerializer, \
     ChangePasswordAdminSerializer, AllTutorsSerializer
@@ -79,6 +77,15 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
 
         return queryset
 
+    def _paginate_queryset(self, queryset, request, serializer_class):
+        paginator = LimitOffsetPagination()
+        pagination_queryset = paginator.paginate_queryset(queryset, request)
+
+        serializer = serializer_class(pagination_queryset, many=True)
+
+        return paginator.get_paginated_response({'success': True, 'results': serializer.data})
+
+
     @action(detail=True, methods=['DELETE'])
     def delete_user(self, request, pk):
         try:
@@ -114,8 +121,9 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 pass
         else:
             users = User.objects.filter(observed_user__isnull=False)
-        return JsonResponse({'success': True, 'result': ObservedSerializer(users, many=True).data},
-                            status=status.HTTP_200_OK)
+        # return JsonResponse({'success': True, 'result': ObservedSerializer(users, many=True).data},
+        #                     status=status.HTTP_200_OK)
+        return self._paginate_queryset(users, request, ObservedSerializer)
 
     @action(detail=True, methods=['GET'])
     def get_observeds_by_tutor(self, request, pk):
@@ -123,8 +131,10 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             observeds = list(
                 Observed.objects.filter(tutor_id=pk).values_list('user__pk', flat=True))
             users = User.objects.filter(pk__in=observeds)
-            return JsonResponse({'success': True, 'result': ObservedSerializer(users, many=True).data},
-                                status=status.HTTP_200_OK)
+
+            return self._paginate_queryset(users, request, ObservedSerializer)
+            # return JsonResponse({'success': True, 'result': ObservedSerializer(users, many=True).data},
+            #                     status=status.HTTP_200_OK)
         except Tutor.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Тьютор не найден']}, status=status.HTTP_400_BAD_REQUEST)
         except ValueError:
@@ -241,7 +251,9 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     @action(methods=['GET'], detail=False)
     def get_tutors(self, request):
         tutors = User.objects.exclude(id__in=Observed.objects.values_list('user_id', flat=True))
-        return JsonResponse({'success': True, 'result': AllTutorsSerializer(tutors, many=True).data})
+
+        return self._paginate_queryset(tutors, request, AllTutorsSerializer)
+        # return JsonResponse({'success': True, 'result': AllTutorsSerializer(tutors, many=True).data})
 
     @action(methods=['GET'], detail=True)
     def get_tutor_by_observed(self, request, pk):
