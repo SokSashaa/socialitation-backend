@@ -83,7 +83,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
 
         serializer = serializer_class(pagination_queryset, many=True)
 
-        return paginator.get_paginated_response({'success': True, 'results': serializer.data})
+        return paginator.get_paginated_response(serializer.data)
 
 
     @action(detail=True, methods=['DELETE'])
