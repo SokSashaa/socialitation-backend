@@ -2,7 +2,6 @@ from django.http import JsonResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
 
 from socialize_main.constants.roles import Roles
 from socialize_main.models import Organization
@@ -15,6 +14,7 @@ class OrganizationsView(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     ordering = ['-pk']
     search_fields = ['name', 'site']
+    ordering_fields = ['name', 'id']
 
     def get_permissions(self):
         return [RolePermission([Roles.ADMINISTRATOR.value])]
