@@ -1,5 +1,5 @@
 from django.db import IntegrityError
-from django.db.models import When, Case, Value, CharField, Prefetch
+from django.db.models import When, Case, Value, CharField, Prefetch, Q
 from django.http import JsonResponse
 from django_filters import rest_framework as dj_filters
 from django_filters.rest_framework import DjangoFilterBackend
@@ -106,23 +106,17 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['GET'])
     def get_observeds(self, request):
         data = request.query_params
+
+        users = User.objects.filter(observed_user__isnull=False)
+
         if data.get('text', False):
-            try:
-                first_pos = data['text'].split(' ')[0]
-                users = User.objects.filter(second_name__icontains=first_pos) | User.objects.filter(
-                    name__icontains=first_pos)
-            except IndexError:
-                users = User.objects.none()
-            try:
-                second_pos = data['text'].split(' ')[1]
-                users = users | User.objects.filter(second_name__icontains=second_pos) | User.objects.filter(
-                    name__icontains=second_pos)
-            except IndexError:
-                pass
-        else:
-            users = User.objects.filter(observed_user__isnull=False)
-        # return JsonResponse({'success': True, 'result': ObservedSerializer(users, many=True).data},
-        #                     status=status.HTTP_200_OK)
+            array_data = data['text'].split(' ')[:2]
+            queries = Q()
+
+            for term in array_data:
+                queries |= Q(second_name__icontains=term) | Q(name__icontains=term)
+
+            users = users.filter(queries)
         return self._paginate_queryset(users, request, ObservedSerializer)
 
     @action(detail=True, methods=['GET'])
