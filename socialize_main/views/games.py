@@ -187,7 +187,7 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
             games = list(
                 GamesObserved.objects.filter(observed=observed).values_list('game__pk', flat=True))
 
-            search_name = data.get('name', False)
+            search_name = data.get('search', False)
 
             if search_name:
                 g_games = Games.objects.filter(pk__in=games, name__icontains=search_name)
