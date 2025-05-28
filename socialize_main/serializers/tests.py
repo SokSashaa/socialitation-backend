@@ -10,6 +10,7 @@ from socialize_main.utils.tests.get_tests_user_in_test_observered import get_tes
 
 class GetUserTestsSerializer(serializers.Serializer):
     user_id = serializers.IntegerField(help_text='ID юзера')
+    search = serializers.CharField(required=False, allow_null=True, allow_blank=True, help_text='Название для поиска')
 
 
 class TestsSerializer(serializers.ModelSerializer):
@@ -61,7 +62,6 @@ class SingleTestUserSerializer(serializers.Serializer):
 
                 if test_obs is None:
                     test_obs = TestObservered.objects.get(test=obj, observed__user__pk=observed_id)
-
                 if test_obs:
                     return test_obs.is_passed
 

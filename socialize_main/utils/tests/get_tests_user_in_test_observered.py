@@ -3,7 +3,7 @@ from django.db.models import Prefetch
 from socialize_main.models import TestObservered, Answers, TestQuestions
 
 
-def get_tests_user_in_test_observered(user_id):
+def get_tests_user_in_test_observered(user_id, search=None):
     test_observers = (TestObservered.objects
     .filter(observed__user__pk=user_id)
     .select_related('test', 'observed')
@@ -18,6 +18,9 @@ def get_tests_user_in_test_observered(user_id):
                  ),
                  to_attr='_prefetched_questions')
     ))
+
+    if search:
+        test_observers.filter(test__title__icontains=search)
 
     tests = []
     for test_observer in test_observers:

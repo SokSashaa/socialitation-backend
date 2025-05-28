@@ -181,13 +181,13 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
         if not serializer.is_valid():
             return JsonResponse({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            user_id = data.get('user_id',False)
+            user_id = serializer.validated_data.get('user_id',False)
             observed = get_observed_by_user_id(user_id)
 
             games = list(
                 GamesObserved.objects.filter(observed=observed).values_list('game__pk', flat=True))
 
-            search_name = data.get('search', False)
+            search_name = serializer.validated_data.get('search', False)
 
             if search_name:
                 g_games = Games.objects.filter(pk__in=games, name__icontains=search_name)

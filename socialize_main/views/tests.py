@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
 
 from socialize_main.constants.roles import Roles
@@ -14,7 +15,7 @@ from socialize_main.permissions.tests.can_view_user_result_test_permission impor
 from socialize_main.permissions.user_access_control_permission import UserAccessControlPermission
 from socialize_main.serializers.tests import GetUserTestsSerializer, GetAnswersSerializer, TestsSerializer, \
     UserTestsSerializer, TestSerializer, AppointTestSerializer, SingleTestSerializer, ExistingTestSerializer, \
-    CreateTestSerializer, SendAnswersSerializer
+    CreateTestSerializer, SendAnswersSerializer, SingleTestUserSerializer
 from socialize_main.utils.tests.get_tests_user_in_test_observered import get_tests_user_in_test_observered
 
 
@@ -40,6 +41,17 @@ class TestsView(viewsets.ModelViewSet):
         except AttributeError:
             queryset = Tests.objects.none()
         return queryset
+
+    def _paginate_queryset(self, queryset, request, serializer_class,context=None):
+        paginator = LimitOffsetPagination()
+        pagination_queryset = paginator.paginate_queryset(queryset, request)
+
+        if not context:
+            serializer = serializer_class(pagination_queryset, many=True)
+        else:
+            serializer = serializer_class(pagination_queryset, many=True, context=context)
+
+        return paginator.get_paginated_response(serializer.data)
 
     @action(methods=['GET'], detail=True)
     def get_single_test(self, request, pk):
@@ -152,16 +164,22 @@ class TestsView(viewsets.ModelViewSet):
         try:
             user_id = serializer.validated_data['user_id']
 
-            user = User.objects.get(pk=user_id)
+            # user = User.objects.get(pk=user_id)
 
-            user._prefetched_test_observers = get_tests_user_in_test_observered(user_id)
+            search_test = serializer.validated_data.get('search', None)
+
+            # user._prefetched_test_observers = get_tests_user_in_test_observered(user_id, search_test)
+            tests = get_tests_user_in_test_observered(user_id, search_test)
 
             context = {
                 'request': request,
                 'user_id': user_id,
             }
-            return JsonResponse({'success': True, 'result': UserTestsSerializer(user, context=context).data},
-                                status=status.HTTP_200_OK)
+
+            return self._paginate_queryset(tests,request, SingleTestUserSerializer, context)
+
+            # return JsonResponse({'success': True, 'result': UserTestsSerializer(user, context=context).data},
+            #                     status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Пользователь не найден']},
                                 status=status.HTTP_400_BAD_REQUEST)
@@ -229,10 +247,9 @@ class TestsView(viewsets.ModelViewSet):
                     'test_result': test_result,
                 }
 
-
                 return JsonResponse(
-                        {'success': True, 'result': TestSerializer(test, context=tests_contex).data},
-                        status=status.HTTP_200_OK)
+                    {'success': True, 'result': TestSerializer(test, context=tests_contex).data},
+                    status=status.HTTP_200_OK)
 
 
         except Tests.DoesNotExist:
@@ -243,7 +260,6 @@ class TestsView(viewsets.ModelViewSet):
         except Answers.DoesNotExist:
             return JsonResponse({'success': False, 'errors': 'Один из вопросов не найден'},
                                 status=status.HTTP_400_BAD_REQUEST)
-
 
     @action(methods=['POST'], detail=False)
     def get_answers(self, request):
