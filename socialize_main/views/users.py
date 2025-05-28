@@ -14,7 +14,7 @@ from socialize_main.permissions.role_permission import RolePermission
 from socialize_main.permissions.user_access_control_permission import UserAccessControlPermission
 from socialize_main.serializers.users import UserRegSerializer, UsersSerializer, ObservedSerializer, \
     ChangeUserInfoSerializer, ChangePasswordSerializer, AppointObservedSerializer, \
-    ChangePasswordAdminSerializer, AllTutorsSerializer
+    ChangePasswordAdminSerializer, AllTutorsSerializer, ObservedCompactSerializer
 from socialize_main.utils.deleteImage import delete_image
 from socialize_main.utils.savingImage import saving_image
 from socialize_main.utils.search_role import search_role
@@ -117,7 +117,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
                 queries |= Q(second_name__icontains=term) | Q(name__icontains=term)
 
             users = users.filter(queries)
-        return self._paginate_queryset(users, request, ObservedSerializer)
+        return self._paginate_queryset(users, request, ObservedCompactSerializer)
 
     @action(detail=True, methods=['GET'])
     def get_observeds_by_tutor(self, request, pk):

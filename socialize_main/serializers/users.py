@@ -1,4 +1,4 @@
-from django.db import transaction, connection
+from django.db import transaction
 from django.db.models import Q
 from rest_framework import serializers
 
@@ -46,10 +46,8 @@ class UsersSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-class ObservedSerializer(serializers.ModelSerializer):
+class BaseObservedSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField(method_name='get_role')
-    tests = serializers.SerializerMethodField(method_name='get_tests')
-    games = serializers.SerializerMethodField(method_name='get_games')
     address = serializers.SerializerMethodField(method_name='get_address')
 
     def get_observed_user(self, obj):
@@ -61,6 +59,37 @@ class ObservedSerializer(serializers.ModelSerializer):
         observed_user = self.get_observed_user(obj)
         return observed_user.address
 
+    def get_role(self, obj):
+        return Roles.OBSERVED.value
+
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'second_name', 'name', 'patronymic', 'role', 'photo', 'address')
+        read_only_fields = ['id']
+
+
+class ObservedCompactSerializer(BaseObservedSerializer):
+    tests = serializers.SerializerMethodField(method_name='get_tests')
+    games = serializers.SerializerMethodField(method_name='get_games')
+
+    def get_games(self, obj):
+        observed_user = self.get_observed_user(obj)
+        games = GamesObserved.objects.filter(observed=observed_user).values_list('game_id', flat=True)
+        return list(games)
+
+    def get_tests(self, obj):
+        observed_user = self.get_observed_user(obj)
+        tests = TestObservered.objects.filter(observed=observed_user).values_list('test_id', flat=True)
+        return list(tests)
+
+    class Meta(BaseObservedSerializer.Meta):
+        fields = BaseObservedSerializer.Meta.fields + ('games', 'tests')
+
+
+class ObservedSerializer(BaseObservedSerializer):
+    tests = serializers.SerializerMethodField(method_name='get_tests')
+    games = serializers.SerializerMethodField(method_name='get_games')
+
     def get_games(self, obj):
         observed_user = self.get_observed_user(obj)
         games = GamesObserved.objects.filter(observed=observed_user)
@@ -71,13 +100,8 @@ class ObservedSerializer(serializers.ModelSerializer):
         tests = TestObservered.objects.filter(observed=observed_user)
         return TestObsSerializer(tests.all(), many=True).data
 
-    def get_role(self, obj):
-        return "observed"
-
-    class Meta:
-        model = User
-        fields = ('id', 'email', 'second_name', 'name', 'patronymic', 'role', 'photo','games', 'tests', 'address')
-        read_only_fields = ['id']
+    class Meta(BaseObservedSerializer.Meta):
+        fields = BaseObservedSerializer.Meta.fields + ('games', 'tests')
 
 
 class ChangeUserInfoSerializer(serializers.Serializer):
