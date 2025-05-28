@@ -4,7 +4,9 @@ import zipfile
 
 from django import forms
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.storage import FileSystemStorage
+from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -12,15 +14,17 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
+from rest_framework.pagination import LimitOffsetPagination
 
 from socialize_main.constants.file_const import ZIP_FILE_FORMAT
 from socialize_main.constants.roles import Roles
-from socialize_main.models import User, Games, GamesObserved
+from socialize_main.models import User, Games, GamesObserved, Observed
 from socialize_main.permissions.role_permission import RolePermission
 from socialize_main.permissions.user_access_control_permission import UserAccessControlPermission
 from socialize_main.serializers.games import GameSerializer, AppointGameSerializer, CreateGameSerializer, \
-    UpdateGameSerializer
+    UpdateGameSerializer, GetUserGamesSerializer
 from socialize_main.utils.deleteImage import delete_image
+from socialize_main.utils.get_observed_by_user_id import get_observed_by_user_id
 from socialize_main.utils.randomName import random_name
 from socialize_main.utils.savingImage import saving_image
 
@@ -37,11 +41,12 @@ class UploadArchiveForm(forms.Form):
     game_description = forms.CharField()
     game_icon = forms.FileField()
 
+
 class GamesView(viewsets.ReadOnlyModelViewSet):
     serializer_class = GameSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     ordering = ['-pk', 'name']
-    ordering_fields = ['name','id']
+    ordering_fields = ['name', 'id']
     search_fields = ['name']
 
     def get_permissions(self):
@@ -52,7 +57,15 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         queryset = Games.objects.all()
 
-        return  queryset
+        return queryset
+
+    def _paginate_queryset(self, queryset, request, serializer_class):
+        paginator = LimitOffsetPagination()
+        pagination_queryset = paginator.paginate_queryset(queryset, request)
+
+        serializer = serializer_class(pagination_queryset, many=True)
+
+        return paginator.get_paginated_response(serializer.data)
 
     @action(methods=['POST'], detail=False)
     def upload(self, request):
@@ -126,42 +139,69 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
     @action(methods=['POST'], detail=False)
     def appoint_game(self, request):
         serializer = AppointGameSerializer(data=request.data)
+
         if not serializer.is_valid():
             return JsonResponse({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            game = Games.objects.get(pk=serializer.validated_data['game_id'])
-            response = ''
+            game_id = serializer.validated_data['game_id']
+
+            game = Games.objects.get(pk=game_id)
+
             for link_user in serializer.validated_data['link']:
-                user = User.objects.get(pk=link_user)
-                game_observed, created = GamesObserved.objects.get_or_create(game=game,
-                                                                             observed=user.observed_user.first())
-                if not created:
-                    response += user.name + '. '
+                observed = get_observed_by_user_id(link_user)
+
+                _, created = GamesObserved.objects.get_or_create(game=game,
+                                                                 observed=observed)
+
             for unlink_user in serializer.validated_data['unlink']:
-                user = User.objects.get(pk=unlink_user)
-                GamesObserved.objects.get(game=game, observed=user.observed_user.first()).delete()
-            if not response:
-                return JsonResponse({'success': True}, status=status.HTTP_200_OK)
-            else:
-                return JsonResponse({'success': True, 'message': f'Пользователям: {response} игра уже назначена'},
-                                    status=status.HTTP_400_BAD_REQUEST)
+                try:
+                    observed = get_observed_by_user_id(unlink_user)
+
+                    GamesObserved.objects.get(game=game, observed=observed).delete()
+                except GamesObserved.DoesNotExist:
+                    pass
+
+            return JsonResponse({'success': True}, status=status.HTTP_200_OK)
+
         except Games.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Игра не найдена']}, status=status.HTTP_400_BAD_REQUEST)
         except Games.MultipleObjectsReturned:
             return JsonResponse({'success': False, 'errors': ['Найдено несколько игр']},
                                 status=status.HTTP_400_BAD_REQUEST)
+        except ObjectDoesNotExist as e:
+            return JsonResponse({'success': False, 'errors': [str(e)]},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-    @action(methods=['GET'], detail=True)
-    def get_obs_games(self, request, pk):
+    @action(methods=['GET'], detail=False)
+    def get_obs_games(self, request):
+        data = request.query_params
+
+        serializer = GetUserGamesSerializer(data=data)
+
+        if not serializer.is_valid():
+            return JsonResponse({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            user = User.objects.get(pk=pk)
+            user_id = data.get('user_id',False)
+            observed = get_observed_by_user_id(user_id)
+
             games = list(
-                GamesObserved.objects.filter(observed=user.observed_user.first()).values_list('game__pk', flat=True))
-            g_games = Games.objects.filter(pk__in=games)
-            return JsonResponse({'success': True, 'results': GameSerializer(g_games, many=True).data},
-                                status=status.HTTP_200_OK)
+                GamesObserved.objects.filter(observed=observed).values_list('game__pk', flat=True))
+
+            search_name = data.get('name', False)
+
+            if search_name:
+                g_games = Games.objects.filter(pk__in=games, name__icontains=search_name)
+            else:
+                g_games = Games.objects.filter(pk__in=games)
+
+            return self._paginate_queryset(g_games, request, GameSerializer)
+            # return JsonResponse({'success': True, 'results': GameSerializer(g_games, many=True).data},
+            #                     status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'errors': ['Пользователь не найден']},
+                                status=status.HTTP_400_BAD_REQUEST)
+        except ObjectDoesNotExist as e:
+            return JsonResponse({'success': False, 'errors': [str(e)]},
                                 status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['POST', 'DELETE'], detail=True)
