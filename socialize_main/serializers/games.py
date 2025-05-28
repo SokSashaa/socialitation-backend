@@ -5,16 +5,17 @@ from rest_framework import serializers
 
 from socialize_main.models import Games
 
+
 class BaseGameSerializer(serializers.Serializer):
     name = serializers.CharField(help_text='Название игры')
     description = serializers.CharField(help_text='Описание игры')
     icon = serializers.CharField(help_text='Иконка игры', required=False, allow_blank=True, allow_null=True)
 
-class GameSerializer(serializers.ModelSerializer):
 
+class GameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Games
-        fields = ('id','name', 'description', 'link', 'icon')
+        fields = ('id', 'name', 'description', 'link', 'icon')
         read_only_fields = ['id']
 
 
@@ -42,12 +43,15 @@ class CreateGameSerializer(BaseGameSerializer):
 class UpdateGameSerializer(BaseGameSerializer):
     pass
 
+
 class SingleGameSerializer(serializers.Serializer):
     game = GameSerializer()
 
+
 class GetUserGamesSerializer(serializers.Serializer):
     user_id = serializers.IntegerField(help_text='ID юзера')
-    name = serializers.CharField(required=False, allow_null=True, allow_blank=True,help_text='Название для поиска')
+    search = serializers.CharField(required=False, allow_null=True, allow_blank=True, help_text='Название для поиска')
+
 
 class AppointGameSerializer(serializers.Serializer):
     link = serializers.ListField(help_text='Список юзеров для привязки', child=serializers.IntegerField())
