@@ -26,8 +26,8 @@ class CreateGameSerializer(BaseGameSerializer):
     def validate_archive_file(self, archive):
         archive.seek(0)
         try:
-            if archive.size > 10 * 1024 * 1024:
-                raise serializers.ValidationError('ZIP файл больше 10 МБ')
+            if archive.size > 150 * 1024 * 1024:
+                raise serializers.ValidationError('ZIP файл больше 150 МБ')
 
             with zipfile.ZipFile(archive, 'r') as zip_ref:
                 if 'index.html' not in zip_ref.namelist():

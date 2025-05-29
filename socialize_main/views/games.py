@@ -6,7 +6,6 @@ from django import forms
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.storage import FileSystemStorage
-from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -18,7 +17,7 @@ from rest_framework.pagination import LimitOffsetPagination
 
 from socialize_main.constants.file_const import ZIP_FILE_FORMAT
 from socialize_main.constants.roles import Roles
-from socialize_main.models import User, Games, GamesObserved, Observed
+from socialize_main.models import User, Games, GamesObserved
 from socialize_main.permissions.role_permission import RolePermission
 from socialize_main.permissions.user_access_control_permission import UserAccessControlPermission
 from socialize_main.serializers.games import GameSerializer, AppointGameSerializer, CreateGameSerializer, \
