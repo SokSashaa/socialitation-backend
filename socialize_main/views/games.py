@@ -1,6 +1,7 @@
 import os
 import shutil
 import zipfile
+from http.client import error
 
 from django import forms
 from django.conf import settings
@@ -24,7 +25,7 @@ from socialize_main.serializers.games import GameSerializer, AppointGameSerializ
     UpdateGameSerializer, GetUserGamesSerializer
 from socialize_main.utils.deleteImage import delete_image
 from socialize_main.utils.get_observed_by_user_id import get_observed_by_user_id
-from socialize_main.utils.randomName import random_name
+from socialize_main.utils.get_random_string_name import generate_random_name
 from socialize_main.utils.savingImage import saving_image
 
 
@@ -69,16 +70,20 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
     @action(methods=['POST'], detail=False)
     def upload(self, request):
         serializer = CreateGameSerializer(data=request.data)
+        image_str = None
+        archive_path = None
+        directory_name = None
+        isError = False
         if not serializer.is_valid():
             return JsonResponse({'success': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         try:
             archive_file = serializer.validated_data['archive_file']
-            game_name = serializer.validated_data['name'].strip().replace(' ', '_')
+            game_name = serializer.validated_data['name']
             game_description = serializer.validated_data['description']
 
             fs = FileSystemStorage(location='templates/games/')
 
-            directory_name = f"{game_name}_{random_name()}"
+            directory_name = generate_random_name()
 
             filename = fs.save(f"{directory_name}{ZIP_FILE_FORMAT}", archive_file)
 
@@ -89,7 +94,6 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
                 zip_ref.extractall(os.path.join(fs.location, directory_name))
 
             image_str = saving_image(serializer, 'icon')
-
             # Формирование ссылки на игру
             game_link = request.build_absolute_uri(reverse('game_view', kwargs={'game_name': directory_name}))
 
@@ -106,8 +110,18 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
             return JsonResponse({'success': False, 'error': 'Архив поврежден или некорректен'},
                                 status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)}, )
+            isError = True
+            return JsonResponse({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         finally:
+            if isError:
+                if image_str:
+                    delete_image(image_str)
+
+                game_directory = os.path.join(settings.TEMPLATES[0]['DIRS'][0], 'games', directory_name)
+                if directory_name and os.path.exists(game_directory):
+                    shutil.rmtree(game_directory)
+
+
             if archive_path and os.path.exists(archive_path):
                 try:
                     os.remove(archive_path)

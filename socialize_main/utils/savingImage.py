@@ -6,14 +6,14 @@ from django.http import JsonResponse
 from rest_framework import status
 
 from SocializationProject import settings
-from socialize_main.utils.randomName import random_name
+from socialize_main.utils.random_number import random_number
 
 
 def saving_image(serializer, field):
     try:
         if serializer.validated_data.get(field, False):
             image_data = serializer.validated_data[field]
-            image_name = f"{random_name()}_photo.png"
+            image_name = f"{random_number()}_photo.png"
             image_path = os.path.join(settings.MEDIA_ROOT, 'uploaded_images', image_name)
 
             os.makedirs(os.path.dirname(image_path), exist_ok=True)

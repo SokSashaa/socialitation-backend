@@ -105,7 +105,7 @@ class ObservedAnswer(models.Model):
 class Games(models.Model):
     name = models.CharField(blank=False, null=False, max_length=150)
     description = models.CharField(blank=False, null=False, max_length=300)
-    link = models.CharField(blank=False, null=False, max_length=150)
+    link = models.CharField(blank=False, null=False, max_length=500)
     directory_name = models.CharField(blank=False, null=False, max_length=150, unique=True, editable=False)
     icon = models.CharField(blank=True, null=True, max_length=500)
 
