@@ -50,9 +50,9 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name']
 
     def get_permissions(self):
-        if self.action in ['get_obs_games', 'appoint_game']:
+        if self.action in ['get_obs_games']:
             return [UserAccessControlPermission()]
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'appoint_game']:
             return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
         return [RolePermission([Roles.ADMINISTRATOR.value])]
 
