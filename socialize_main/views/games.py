@@ -50,9 +50,11 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
     search_fields = ['name']
 
     def get_permissions(self):
-        if self.action in ['get_obs_games']:
+        if self.action in ['get_obs_games', 'appoint_game']:
             return [UserAccessControlPermission()]
-        return [RolePermission(Roles.ADMINISTRATOR.value)]
+        if self.action in ['list', 'retrieve']:
+            return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
+        return [RolePermission([Roles.ADMINISTRATOR.value])]
 
     def get_queryset(self):
         queryset = Games.objects.all()
@@ -70,10 +72,12 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
     @action(methods=['POST'], detail=False)
     def upload(self, request):
         serializer = CreateGameSerializer(data=request.data)
+
         image_str = None
         archive_path = None
         directory_name = None
         isError = False
+
         if not serializer.is_valid():
             return JsonResponse({'success': False, 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -120,7 +124,6 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
                 game_directory = os.path.join(settings.TEMPLATES[0]['DIRS'][0], 'games', directory_name)
                 if directory_name and os.path.exists(game_directory):
                     shutil.rmtree(game_directory)
-
 
             if archive_path and os.path.exists(archive_path):
                 try:
@@ -194,7 +197,7 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
         if not serializer.is_valid():
             return JsonResponse({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            user_id = serializer.validated_data.get('user_id',False)
+            user_id = serializer.validated_data.get('user_id', False)
             observed = get_observed_by_user_id(user_id)
 
             games = list(
