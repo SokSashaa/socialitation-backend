@@ -49,7 +49,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
 
     # Для действий, которые должны быть доступны без аутентификации:
     def get_permissions(self):
-        if self.action in ['change_password', 'me']:
+        if self.action in ['change_password', 'me', 'logout']:
             return [IsAuthenticated()]
         if self.action in ['list', 'delete_user', 'get_tutors', 'register_user']:  ##list - это /users/
             return [RolePermission([Roles.ADMINISTRATOR.value])]
@@ -302,3 +302,10 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'errors': 'Пользователь не найден'},
                                 status=status.HTTP_400_BAD_REQUEST)
+
+    @action(methods=['POST'], detail=False)
+    def logout(self, request):
+        response = JsonResponse({'message': 'Logged out successfully'})
+        response.delete_cookie('sessionid')
+        return response
+
