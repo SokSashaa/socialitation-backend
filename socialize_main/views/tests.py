@@ -33,6 +33,8 @@ class TestsView(viewsets.ModelViewSet):
             return [UserAccessControlPermission()]
         if self.action in ['get_answers']:
             return [CanViewUserResultTestPermission()]
+        if self.action in ['destroy']:
+            return [RolePermission([Roles.ADMINISTRATOR.value])]
         return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
 
     def get_queryset(self):
@@ -42,7 +44,7 @@ class TestsView(viewsets.ModelViewSet):
             queryset = Tests.objects.none()
         return queryset
 
-    def _paginate_queryset(self, queryset, request, serializer_class,context=None):
+    def _paginate_queryset(self, queryset, request, serializer_class, context=None):
         paginator = LimitOffsetPagination()
         pagination_queryset = paginator.paginate_queryset(queryset, request)
 
@@ -176,7 +178,7 @@ class TestsView(viewsets.ModelViewSet):
                 'user_id': user_id,
             }
 
-            return self._paginate_queryset(tests,request, SingleTestUserSerializer, context)
+            return self._paginate_queryset(tests, request, SingleTestUserSerializer, context)
 
             # return JsonResponse({'success': True, 'result': UserTestsSerializer(user, context=context).data},
             #                     status=status.HTTP_200_OK)

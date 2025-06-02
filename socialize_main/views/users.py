@@ -1,4 +1,4 @@
-from django.db import IntegrityError
+from django.db import IntegrityError, connection
 from django.db.models import When, Case, Value, CharField, Prefetch, Q
 from django.http import JsonResponse
 from django_filters import rest_framework as dj_filters
@@ -7,6 +7,7 @@ from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
+from rest_framework import serializers
 
 from socialize_main.constants.roles import Roles
 from socialize_main.models import User, Observed, Tutor, Administrator, Organization
@@ -52,7 +53,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             return [IsAuthenticated()]
         if self.action in ['list', 'delete_user', 'get_tutors', 'register_user']:  ##list - это /users/
             return [RolePermission([Roles.ADMINISTRATOR.value])]
-        if self.action in ['retrieve','change_user_info', 'get_tutor_by_observed', 'delete_avatar']:
+        if self.action in ['retrieve', 'change_user_info', 'get_tutor_by_observed', 'delete_avatar']:
             return [UserAccessControlPermission()]
         return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
 
@@ -84,7 +85,6 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
         serializer = serializer_class(pagination_queryset, many=True)
 
         return paginator.get_paginated_response(serializer.data)
-
 
     @action(detail=True, methods=['DELETE'])
     def delete_user(self, request, pk):
@@ -151,7 +151,7 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
 
             user_organization = serializer.validated_data.get('organization', False)
 
-            if user_organization and not user_organization == user.organization: ##TODO: Проверить условие
+            if user_organization and not user_organization == user.organization:  ##TODO: Проверить условие
                 organization_id = serializer.validated_data['organization']
                 user.organization = Organization.objects.get(id=organization_id)
 
@@ -239,7 +239,11 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
             except IntegrityError as e:
                 return JsonResponse({'success': False, "errors": get_integrity_error_user(e)},
                                     status=status.HTTP_400_BAD_REQUEST)
-
+            except serializers.ValidationError as e:
+                return JsonResponse(
+                    {'success': False, 'errors': e.detail},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         return JsonResponse({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['GET'], detail=False)

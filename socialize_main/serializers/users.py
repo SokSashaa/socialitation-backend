@@ -166,8 +166,16 @@ class UserRegSerializer(serializers.ModelSerializer):
                     tutor = Tutor.objects.get_or_create(
                         user=user),
                 elif validated_data['role'].get('code', '') == Roles.OBSERVED.value:
+                    tutor_id = validated_data['role']['tutor_id']
+
+                    isNotTutor = Observed.objects.filter(user_id=tutor_id).exists()
+
+                    if isNotTutor:
+                        raise serializers.ValidationError(
+                            {"tutor_id": 'Указанный вами пользователь не является тьютором'})
+
                     observed = Observed.objects.get_or_create(user=user, tutor=User.objects.get(
-                        pk=validated_data['role']['tutor_id']),
+                        pk=tutor_id),
                                                               address=validated_data['address'])
                 elif validated_data['role'].get('code', '') == Roles.ADMINISTRATOR.value:
                     administrator = Administrator.objects.get_or_create(
