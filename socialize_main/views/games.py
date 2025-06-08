@@ -15,6 +15,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters, status
 from rest_framework.decorators import action
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.permissions import IsAuthenticated
 
 from socialize_main.constants.file_const import ZIP_FILE_FORMAT
 from socialize_main.constants.roles import Roles
@@ -52,8 +53,10 @@ class GamesView(viewsets.ReadOnlyModelViewSet):
     def get_permissions(self):
         if self.action in ['get_obs_games']:
             return [UserAccessControlPermission()]
-        if self.action in ['list', 'retrieve', 'appoint_game']:
+        if self.action in ['list', 'appoint_game']:
             return [RolePermission([Roles.ADMINISTRATOR.value, Roles.TUTOR.value])]
+        if self.action in ['retrieve']:
+            return [IsAuthenticated()]
         return [RolePermission([Roles.ADMINISTRATOR.value])]
 
     def get_queryset(self):

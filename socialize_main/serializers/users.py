@@ -194,10 +194,11 @@ class AllTutorsSerializer(serializers.ModelSerializer):
     name = serializers.CharField()
     second_name = serializers.CharField()
     patronymic = serializers.CharField()
+    email = serializers.CharField()
 
     class Meta:
         model = User
-        fields = ('id', 'name', 'second_name', 'patronymic')
+        fields = ('id', 'name', 'second_name', 'patronymic', 'email')
         read_only_fields = ['id']
 
 

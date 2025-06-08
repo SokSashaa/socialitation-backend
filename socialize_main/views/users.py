@@ -121,10 +121,22 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['GET'])
     def get_observeds_by_tutor(self, request, pk):
+        data = request.query_params
+
         try:
             observeds = list(
                 Observed.objects.filter(tutor_id=pk).values_list('user__pk', flat=True))
             users = User.objects.filter(pk__in=observeds)
+
+            if data.get('text', False):
+                array_data = data['text'].split(' ')[:2]
+                queries = Q()
+
+                for term in array_data:
+                    queries |= Q(second_name__icontains=term) | Q(name__icontains=term)
+
+                users = users.filter(queries)
+
 
             return self._paginate_queryset(users, request, ObservedSerializer)
             # return JsonResponse({'success': True, 'result': ObservedSerializer(users, many=True).data},
@@ -308,4 +320,3 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
         response = JsonResponse({'message': 'Logged out successfully'})
         response.delete_cookie('sessionid')
         return response
-
