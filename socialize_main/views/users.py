@@ -137,7 +137,6 @@ class UsersView(viewsets.ReadOnlyModelViewSet):
 
                 users = users.filter(queries)
 
-
             return self._paginate_queryset(users, request, ObservedSerializer)
             # return JsonResponse({'success': True, 'result': ObservedSerializer(users, many=True).data},
             #                     status=status.HTTP_200_OK)

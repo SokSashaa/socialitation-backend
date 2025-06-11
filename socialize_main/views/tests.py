@@ -83,18 +83,22 @@ class TestsView(viewsets.ModelViewSet):
         serializer = CreateTestSerializer(data=request.data)
         if not serializer.is_valid():
             return JsonResponse({'success': False, 'errors': [serializer.errors]}, status=status.HTTP_400_BAD_REQUEST)
-        test, created = Tests.objects.get_or_create(
-            title=serializer.validated_data['title'],
-            defaults={
-                'description': serializer.validated_data['description'] if serializer.validated_data.get(
-                    'description') else ''
-            }
-        )
-        if created:
-            return JsonResponse({'sucsess': True, 'result': SingleTestSerializer(test).data}, status=status.HTTP_200_OK)
-        else:
-            return JsonResponse({'success': False, 'errors': ['Тест с таким заголовком уже существует']},
-                                status=status.HTTP_400_BAD_REQUEST)
+        test = Tests.objects.create(title=serializer.validated_data['title'],
+                                    description=serializer.validated_data.get('description', '')
+                                    )
+        return JsonResponse({'success': True, 'result': SingleTestSerializer(test).data}, status=status.HTTP_200_OK)
+        # test, created = Tests.objects.get_or_create(
+        #     title=serializer.validated_data['title'],
+        #     defaults={
+        #         'description': serializer.validated_data['description'] if serializer.validated_data.get(
+        #             'description') else ''
+        #     }
+        # )
+        # if created:
+        #     return JsonResponse({'sucsess': True, 'result': SingleTestSerializer(test).data}, status=status.HTTP_200_OK)
+        # else:
+        #     return JsonResponse({'success': False, 'errors': ['Тест с таким заголовком уже существует']},
+        #                         status=status.HTTP_400_BAD_REQUEST)
 
     @action(methods=['POST'], detail=True, serializer_class=ExistingTestSerializer)
     def create_questions(self, request, pk):
