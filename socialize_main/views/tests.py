@@ -147,7 +147,9 @@ class TestsView(viewsets.ModelViewSet):
             for unlink_user in serializer.validated_data['unlink']:
                 user = User.objects.get(pk=unlink_user)
                 try:
-                    TestObservered.objects.get(test=test, observed=user.observed_user.first()).delete()  # TODO ЗАЛИТЬ
+                    observed = user.observed_user.first()
+                    TestObservered.objects.get(test=test, observed=observed).delete()
+                    TestResult.objects.get(test=test, observed=observed).delete()
                 except TestObservered.DoesNotExist:
                     continue
             if not response:
